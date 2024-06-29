@@ -10,30 +10,28 @@ import (
 type gauge float64
 type counter int64
 
-var store MemStorage
+var store *MemStorage
 
 type MemStorage struct {
 	Gauges   map[string]gauge
 	Counters map[string]counter
 }
 
-func (m *MemStorage) SetGauge(name, value string) error {
-	i, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return err
+func (m *MemStorage) SetValue(t, name, value string) error {
+	switch t {
+	case "gauge":
+		i, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		m.Gauges[name] = gauge(i)
+	case "counter":
+		i, err := strconv.Atoi(value)
+		if err != nil {
+			return err
+		}
+		m.Gauges[name] = m.Gauges[name] + gauge(i)
 	}
-
-	m.Gauges[name] = gauge(i)
-	return nil
-}
-
-func (m *MemStorage) SetCounter(name, value string) error {
-	i, err := strconv.Atoi(value)
-	if err != nil {
-		return err
-	}
-
-	m.Gauges[name] = m.Gauges[name] + gauge(i)
 	return nil
 }
 
@@ -77,18 +75,7 @@ func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	name := args[3]
 	value := args[4]
 
-	if len(args) > 4 {
-
-		w.WriteHeader(http.StatusBadRequest)
-	}
-
-	var err error
-	switch t {
-	case "gauge":
-		err := store.SetGauge(name, value)
-	case "counter":
-		err := store.SetCounter(name, value)
-	}
+	err := store.SetValue(t, name, value)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -98,7 +85,10 @@ func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func run() error {
-	store = MemStorage{}
+	store = new(MemStorage)
+	store.Gauges = map[string]gauge{}
+	store.Counters = map[string]counter{}
+
 	m := http.NewServeMux()
 	m.HandleFunc("/", UpdateMetrics)
 
