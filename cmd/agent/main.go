@@ -98,6 +98,7 @@ func makeUpdateRequest(path string) {
 		// fmt.Printf("call error. Error: %s\n", err)
 		return
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		fmt.Println("Error write metrics")
