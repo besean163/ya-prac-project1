@@ -55,24 +55,20 @@ func (s RuntimeSource) GetMetrics() map[string]gauge {
 	}
 }
 
-const (
-	poolInterval   = 1
-	reportInterval = 2
-)
-
 func main() {
+	parseFlags()
 	ms := RuntimeSource{stat: runtime.MemStats{}}
 	mp := &MetricStorage{Source: ms, Metrics: map[string]gauge{}, Counters: map[string]counter{}}
 
 	go func() {
 		for {
 			mp.Update()
-			time.Sleep(poolInterval * time.Second)
+			time.Sleep(time.Duration(pollIntervalFlag) * time.Second)
 		}
 	}()
 
 	for {
-		time.Sleep(reportInterval * time.Second)
+		time.Sleep(time.Duration(reportIntervalFlag) * time.Second)
 		SendMetrics(mp)
 	}
 }
@@ -90,7 +86,7 @@ func SendMetrics(s Storage) {
 func makeUpdateRequest(path string) {
 	updatePath := "/update"
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8080", nil)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s", serverEndpointFlag), nil)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
 		return

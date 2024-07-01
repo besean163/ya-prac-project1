@@ -86,6 +86,7 @@ var availableMetricTypes = []string{
 }
 
 func main() {
+	parseFlags()
 	if err := run(); err != nil {
 		panic(err)
 	}
@@ -141,7 +142,8 @@ func run() error {
 	s := CreateServer()
 	s.MountHandlers(store)
 
-	return http.ListenAndServe(":8080", s.Router)
+	fmt.Printf("Start server on: %s\n", serverEndpointFlag)
+	return http.ListenAndServe(serverEndpointFlag, s.Router)
 }
 
 type Server struct {
