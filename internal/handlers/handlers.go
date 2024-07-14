@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +10,7 @@ import (
 type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
-	ToString() string
+	GetRows() []string
 }
 
 type ServerHandler struct {
@@ -25,7 +25,7 @@ func New(storage Storage) *ServerHandler {
 
 func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 
 	err := s.storage.SetValue(mType, mName, mValue)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -49,14 +49,32 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	if mType != "" && mName != "" {
 		v, err := s.storage.GetValue(mType, mName)
 		if err != nil {
-			log.Println(err)
-			log.Println("here")
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
 		w.Write([]byte(v))
 	} else {
-		w.Write([]byte(s.storage.ToString()))
-
+		w.Write([]byte(getMetricPage(s.storage.GetRows())))
 	}
+}
+
+func getMetricPage(rows []string) string {
+	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
+
+	for _, row := range rows {
+		page += fmt.Sprintf("<div>%s</div>", row)
+	}
+
+	page += `</body></html>`
+	return page
+}
+
+func (s *ServerHandler) GetHandler() http.Handler {
+	router := chi.NewRouter()
+	router.Route("/", func(r chi.Router) {
+		r.Get("/", s.GetMetrics)
+		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
+		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)
+	})
+	return router
 }

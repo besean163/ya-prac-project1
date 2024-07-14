@@ -5,13 +5,20 @@ import (
 	"os"
 )
 
-var serverEndpointFlag string
+type ServerConfig struct {
+	Endpoint string
+}
 
-func parseFlags() {
-	flag.StringVar(&serverEndpointFlag, "a", "localhost:8080", "server endpoint")
+func NewConfig() ServerConfig {
+	endpointFlag := ""
+	flag.StringVar(&endpointFlag, "a", "localhost:8080", "server endpoint")
 	flag.Parse()
 
-	if envServerAddr := os.Getenv("ADDRESS"); envServerAddr != "" {
-		serverEndpointFlag = envServerAddr
+	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
+		endpointFlag = endpointEnv
+	}
+
+	return ServerConfig{
+		Endpoint: endpointFlag,
 	}
 }

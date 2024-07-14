@@ -26,17 +26,17 @@ type MemStorage struct {
 	Counters map[string]counter
 }
 
-func NewStorage() *MemStorage {
-	return &MemStorage{Gauges: map[string]gauge{}, Counters: map[string]counter{}}
+func NewStorage() MemStorage {
+	return MemStorage{Gauges: map[string]gauge{}, Counters: map[string]counter{}}
 }
 
-func (m *MemStorage) SetValue(t, name, value string) error {
-	err := checkWrongType(t)
+func (m MemStorage) SetValue(metricType, name, value string) error {
+	err := checkWrongType(metricType)
 	if err != nil {
 		return err
 	}
 
-	switch t {
+	switch metricType {
 	case metricTypeGauge:
 		i, err := strconv.ParseFloat(value, 64)
 		if err != nil {
@@ -48,12 +48,7 @@ func (m *MemStorage) SetValue(t, name, value string) error {
 		if err != nil {
 			return err
 		}
-		v, ok := m.Counters[name]
-		if ok {
-			m.Counters[name] = v + counter(i)
-		} else {
-			m.Counters[name] = counter(i)
-		}
+		m.Counters[name] += counter(i)
 
 	default:
 		return errors.New("not correct type")
@@ -61,15 +56,15 @@ func (m *MemStorage) SetValue(t, name, value string) error {
 	return nil
 }
 
-func (m *MemStorage) GetValue(t, name string) (string, error) {
+func (m MemStorage) GetValue(metricType, name string) (string, error) {
 	var err error
-	err = checkWrongType(t)
+	err = checkWrongType(metricType)
 	if err != nil {
 		return "", err
 	}
 
 	value := ""
-	switch t {
+	switch metricType {
 	case metricTypeGauge:
 		v, ok := m.Gauges[name]
 		if ok {
@@ -88,15 +83,17 @@ func (m *MemStorage) GetValue(t, name string) (string, error) {
 	return value, err
 }
 
-func (m MemStorage) ToString() string {
-	result := ""
+func (m MemStorage) GetRows() []string {
+	result := []string{}
 
 	for k, v := range m.Gauges {
-		result += fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
+		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
+		result = append(result, row)
 	}
 
 	for k, v := range m.Counters {
-		result += fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
+		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
+		result = append(result, row)
 	}
 
 	return result

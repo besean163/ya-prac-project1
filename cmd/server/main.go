@@ -2,31 +2,25 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/inmem"
-
-	"github.com/go-chi/chi/v5"
 )
 
 func main() {
-	parseFlags()
-	if err := run(); err != nil {
-		panic(err)
+	config := NewConfig()
+	if err := run(config); err != nil {
+		log.Fatalf(err.Error())
 	}
 }
 
-func run() error {
+func run(config ServerConfig) error {
 	store := inmem.NewStorage()
 	h := handlers.New(store)
 
-	router := chi.NewRouter()
-	router.Route("/", func(r chi.Router) {
-		r.Get("/", h.GetMetrics)
-		r.Get("/value/{metric_type}/{metric_name}", h.GetMetrics)
-		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", h.UpdateMetrics)
-	})
+	router := h.GetHandler()
 
-	fmt.Printf("Start server on: %s\n", serverEndpointFlag)
-	return http.ListenAndServe(serverEndpointFlag, router)
+	fmt.Printf("Start server on: %s\n", config.Endpoint)
+	return http.ListenAndServe(config.Endpoint, router)
 }

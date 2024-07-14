@@ -2,46 +2,54 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strconv"
 )
 
-var serverEndpointFlag string
-var reportIntervalFlag int
-var pollIntervalFlag int
+type AgentConfig struct {
+	Endpoint       string
+	ReportInterval int
+	PoolInterval   int
+}
 
 const (
-	poolInterval   = 1
-	reportInterval = 2
+	defaultPoolInterval   = 1
+	defaultReportInterval = 2
 )
 
-func parseFlags() {
-	flag.StringVar(&serverEndpointFlag, "a", "localhost:8080", "server endpoint")
-	flag.IntVar(&reportIntervalFlag, "r", reportInterval, "report interval sec")
-	flag.IntVar(&pollIntervalFlag, "p", poolInterval, "metrics pool interval sec")
+func NewConfig() AgentConfig {
+	config := AgentConfig{}
+
+	flag.StringVar(&config.Endpoint, "a", "localhost:8080", "server endpoint")
+	flag.IntVar(&config.ReportInterval, "r", 0, "report interval sec")
+	flag.IntVar(&config.PoolInterval, "p", 0, "metrics pool interval sec")
 	flag.Parse()
 
-	if envServerAddr := os.Getenv("ADDRESS"); envServerAddr != "" {
-		serverEndpointFlag = envServerAddr
+	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
+		config.Endpoint = endpointEnv
 	}
 
-	if envReportInv := os.Getenv("REPORT_INTERVAL"); envReportInv != "" {
-		interval, err := strconv.Atoi(envReportInv)
+	if reportIntervalEnv := os.Getenv("REPORT_INTERVAL"); reportIntervalEnv != "" {
+		interval, err := strconv.Atoi(reportIntervalEnv)
 		if err == nil {
-			reportIntervalFlag = interval
+			config.ReportInterval = interval
 		}
 	}
 
-	if envPoolInv := os.Getenv("POLL_INTERVAL"); envPoolInv != "" {
-		interval, err := strconv.Atoi(envPoolInv)
+	if poolIntervalEnv := os.Getenv("POLL_INTERVAL"); poolIntervalEnv != "" {
+		interval, err := strconv.Atoi(poolIntervalEnv)
 		if err == nil {
-			pollIntervalFlag = interval
+			config.PoolInterval = interval
 		}
 	}
 
-	fmt.Println("Run with:")
-	fmt.Println("Storage server endpoint: ", serverEndpointFlag)
-	fmt.Println("Report interval (sec):", reportIntervalFlag)
-	fmt.Println("Pool interval (sec):", pollIntervalFlag)
+	if config.PoolInterval == 0 {
+		config.PoolInterval = defaultPoolInterval
+	}
+
+	if config.ReportInterval == 0 {
+		config.ReportInterval = defaultReportInterval
+	}
+
+	return config
 }

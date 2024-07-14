@@ -7,20 +7,20 @@ import (
 )
 
 func main() {
-	parseFlags()
+	c := NewConfig()
 
-	storage := inmem.MemStorage{}
+	storage := inmem.NewStorage()
 	service := services.NewRuntimeService(&storage)
 
 	go func() {
 		for {
 			service.UpdateMetrics()
-			time.Sleep(time.Duration(pollIntervalFlag) * time.Second)
+			time.Sleep(time.Duration(c.PoolInterval) * time.Second)
 		}
 	}()
 
 	for {
-		time.Sleep(time.Duration(reportIntervalFlag) * time.Second)
-		service.SendMetrics(serverEndpointFlag)
+		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
+		service.SendMetrics(c.Endpoint)
 	}
 }
