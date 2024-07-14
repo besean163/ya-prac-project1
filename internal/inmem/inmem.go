@@ -108,3 +108,15 @@ func checkWrongType(t string) error {
 	}
 	return nil
 }
+
+func (s MemStorage) GetMetricPaths() []string {
+	paths := []string{}
+	for k, v := range s.Gauges {
+		paths = append(paths, fmt.Sprintf("gauge/%s/%v", k, v))
+	}
+
+	for k, v := range s.Counters {
+		paths = append(paths, fmt.Sprintf("counter/%s/%v", k, v))
+	}
+	return paths
+}

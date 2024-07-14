@@ -1,4 +1,4 @@
-package http
+package handlers
 
 import (
 	"log"
@@ -13,27 +13,17 @@ type Storage interface {
 	ToString() string
 }
 
-type Server struct {
-	Router  *chi.Mux
+type ServerHandler struct {
 	storage Storage
 }
 
-func NewServer(storage Storage) *Server {
-	s := &Server{}
-	s.Router = chi.NewRouter()
+func New(storage Storage) *ServerHandler {
+	s := &ServerHandler{}
 	s.storage = storage
 	return s
 }
 
-func (s *Server) mountHandlers() {
-	s.Router.Route("/", func(r chi.Router) {
-		r.Get("/", s.GetMetrics)
-		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
-		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.GetMetrics)
-	})
-}
-
-func (s *Server) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -52,13 +42,15 @@ func (s *Server) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) GetMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	mType := chi.URLParam(r, "metric_type")
 	mName := chi.URLParam(r, "metric_name")
 
 	if mType != "" && mName != "" {
 		v, err := s.storage.GetValue(mType, mName)
 		if err != nil {
+			log.Println(err)
+			log.Println("here")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -67,11 +59,4 @@ func (s *Server) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(s.storage.ToString()))
 
 	}
-}
-
-func (s *Server) Start(serverEndpointFlag string) error {
-	s.mountHandlers()
-
-	log.Printf("Start server on: %s\n", serverEndpointFlag)
-	return http.ListenAndServe(serverEndpointFlag, s.Router)
 }
