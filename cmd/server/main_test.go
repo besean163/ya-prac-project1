@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"ya-prac-project1/internal/handlers"
+	"ya-prac-project1/internal/logger"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -74,6 +75,7 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		logger.Set()
 		t.Run(test.path, func(t *testing.T) {
 			req, _ := http.NewRequest(test.method, test.path, nil)
 			rr := httptest.NewRecorder()
