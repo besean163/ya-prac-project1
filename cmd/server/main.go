@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/inmem"
+	"ya-prac-project1/internal/logger"
 )
 
 func main() {
@@ -16,11 +17,14 @@ func main() {
 }
 
 func run(config ServerConfig) error {
+	err := logger.Set()
+	if err != nil {
+		return err
+	}
 	store := inmem.NewStorage()
 	h := handlers.New(store)
-
-	router := h.GetHandler()
+	h.Mount()
 
 	fmt.Printf("Start server on: %s\n", config.Endpoint)
-	return http.ListenAndServe(config.Endpoint, router)
+	return http.ListenAndServe(config.Endpoint, h)
 }

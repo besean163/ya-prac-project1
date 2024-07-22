@@ -78,7 +78,8 @@ func TestUpdateMetrics(t *testing.T) {
 			req, _ := http.NewRequest(test.method, test.path, nil)
 			rr := httptest.NewRecorder()
 
-			h.GetHandler().ServeHTTP(rr, req)
+			h.Mount()
+			h.ServeHTTP(rr, req)
 
 			assert.Equal(t, test.code, rr.Code)
 
