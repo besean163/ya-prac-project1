@@ -22,7 +22,7 @@ type ServerHandler struct {
 }
 
 type LogData struct {
-	Uri    string
+	URI    string
 	Method string
 	Status int
 	Size   int
@@ -124,12 +124,12 @@ func logMiddleware(h http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		lResponseWriter.Data.Method = r.Method
-		lResponseWriter.Data.Uri = r.RequestURI
+		lResponseWriter.Data.URI = r.RequestURI
 
 		logger.Get().Info(
 			"get request",
 			zap.String("method", lResponseWriter.Data.Method),
-			zap.String("uri", lResponseWriter.Data.Uri),
+			zap.String("uri", lResponseWriter.Data.URI),
 			zap.Int("status", lResponseWriter.Data.Status),
 			zap.Int("size", lResponseWriter.Data.Size),
 			zap.Duration("time", duration),
