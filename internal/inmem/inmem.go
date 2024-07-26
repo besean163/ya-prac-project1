@@ -18,20 +18,31 @@ var availableTypes = []string{
 	metricTypeCounter,
 }
 
+type Metrics struct {
+	ID    string   `json:"id"`
+	MType string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
+
 type gauge float64
 type counter int64
 
 type MemStorage struct {
-	Gauges   map[string]gauge
-	Counters map[string]counter
+	Metrics []*Metrics
 }
 
 func NewStorage() MemStorage {
-	return MemStorage{Gauges: map[string]gauge{}, Counters: map[string]counter{}}
+	return MemStorage{Metrics: []*Metrics{}}
 }
 
 func (m MemStorage) SetValue(metricType, name, value string) error {
 	err := checkWrongType(metricType)
+	if err != nil {
+		return err
+	}
+
+	metric, err := m.GetMetric(metricType, name)
 	if err != nil {
 		return err
 	}
@@ -42,18 +53,48 @@ func (m MemStorage) SetValue(metricType, name, value string) error {
 		if err != nil {
 			return err
 		}
-		m.Gauges[name] = gauge(i)
+		metric.Value = &i
+
+		m.Metrics = append(m.Metrics, metric)
 	case metricTypeCounter:
 		i, err := strconv.Atoi(value)
 		if err != nil {
 			return err
 		}
-		m.Counters[name] += counter(i)
+		// m.Counters[name] += counter(i)
+		// metric.Value = &i
+		delta := *metric.Delta + int64(i)
+
+		metric.Delta = &delta
 
 	default:
 		return errors.New("not correct type")
 	}
 	return nil
+}
+
+func (m *MemStorage) GetMetric(metricType, name string) (*Metrics, error) {
+	err := checkWrongType(metricType)
+	if err != nil {
+		return nil, err
+	}
+	var item *Metrics
+	for _, metric := range m.Metrics {
+		if metric.MType == metricType && metric.ID == name {
+			item = metric
+			break
+		}
+	}
+
+	if item != nil {
+		item = &Metrics{
+			ID:    name,
+			MType: metricType,
+		}
+	}
+
+	return item, err
+
 }
 
 func (m MemStorage) GetValue(metricType, name string) (string, error) {
