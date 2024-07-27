@@ -1,18 +1,21 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
 type Storage interface {
-	SetValue(t, name, value string) error
-	GetValue(t, name string) (string, error)
+	GetMetric(metricType, name string) *metrics.Metrics
+	UpdateMetric(metric *metrics.Metrics) error
 	GetRows() []string
 }
 
@@ -50,40 +53,72 @@ func New(storage Storage) *ServerHandler {
 	return s
 }
 
-func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *ServerHandler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	mType := chi.URLParam(r, "metric_type")
-	mName := chi.URLParam(r, "metric_name")
-	mValue := chi.URLParam(r, "metric_value")
-
-	err := s.storage.SetValue(mType, mName, mValue)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	metric := &metrics.Metrics{}
+	err = json.Unmarshal(body, metric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.storage.UpdateMetric(metric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	mType := chi.URLParam(r, "metric_type")
-	mName := chi.URLParam(r, "metric_name")
+func (s *ServerHandler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
-	if mType != "" && mName != "" {
-		v, err := s.storage.GetValue(mType, mName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		w.Write([]byte(v))
-	} else {
-		w.Write([]byte(getMetricPage(s.storage.GetRows())))
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
+	metric := &metrics.Metrics{}
+	err = json.Unmarshal(body, metric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	existMetric := s.storage.GetMetric(metric.MType, metric.ID)
+	if existMetric == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	b, err := json.Marshal(existMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *ServerHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(getMetricPage(s.storage.GetRows())))
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -101,9 +136,9 @@ func getMetricPage(rows []string) string {
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
-		r.Get("/", s.GetMetrics)
-		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
-		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)
+		r.Get("/", s.GetAllMetrics)
+		r.Post("/value/", s.GetMetric)
+		r.Post("/update/", s.UpdateMetric)
 	})
 	s.handler = router
 }

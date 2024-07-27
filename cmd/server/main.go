@@ -22,7 +22,7 @@ func run(config ServerConfig) error {
 		return err
 	}
 	store := inmem.NewStorage()
-	h := handlers.New(store)
+	h := handlers.New(&store)
 	h.Mount()
 
 	fmt.Printf("Start server on: %s\n", config.Endpoint)

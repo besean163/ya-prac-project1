@@ -1,18 +1,24 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"time"
+	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
+	metrs "ya-prac-project1/internal/metrics"
+
+	"go.uber.org/zap"
 )
 
 type Storage interface {
-	SetValue(metricType, name, value string) error
-	GetValue(metricType, name string) (string, error)
-	GetMetricPaths() []string
+	GetMetric(metricType, name string) *metrics.Metrics
+	UpdateMetric(metric *metrics.Metrics) error
+	GetAllMetrics() []*metrics.Metrics
 }
 
 type RuntimeService struct {
@@ -23,45 +29,65 @@ func NewRuntimeService(storage Storage) RuntimeService {
 	return RuntimeService{storage: storage}
 }
 
-func (s *RuntimeService) UpdateMetrics() {
+func (s *RuntimeService) UpdateMetrics() error {
 	metrics := getRuntimeMetrics()
 	for name, value := range metrics {
-		s.storage.SetValue("gauge", name, value)
+		metric, err := metrs.New(metrs.MetricTypeGauge, name, value)
+		if err != nil {
+			return err
+		}
+		s.storage.UpdateMetric(metric)
 	}
 
 	rand.New(rand.NewSource(time.Now().Unix()))
-	s.storage.SetValue("gauge", "RandomValue", fmt.Sprint(rand.Float64()))
-	s.storage.SetValue("counters", "PollCount", fmt.Sprint(1))
+	randMetric, err := metrs.New(metrs.MetricTypeGauge, "RandomValue", fmt.Sprint(rand.Float64()))
+	if err != nil {
+		return err
+	}
+	s.storage.UpdateMetric(randMetric)
+
+	poolMetric, err := metrs.New(metrs.MetricTypeCounter, "PollCount", fmt.Sprint(1))
+	if err != nil {
+		return err
+	}
+	s.storage.UpdateMetric(poolMetric)
+
+	return nil
 }
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
-	paths := s.storage.GetMetricPaths()
-	for _, path := range paths {
-		makeUpdateRequest(path, serverEndpoint)
+	for _, metric := range s.storage.GetAllMetrics() {
+		makeUpdateRequest(serverEndpoint, metric)
 	}
 }
 
-func makeUpdateRequest(path string, serverEndpoint string) {
-	updatePath := "/update"
-	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s", serverEndpoint), nil)
+func makeUpdateRequest(serverEndpoint string, metric *metrics.Metrics) {
+	b, err := json.Marshal(metric)
 	if err != nil {
-		fmt.Printf("can't create request. Error: %s\n", err)
+		logger.Get().Info("can marshal", zap.Error(err))
+		return
+	}
+	br := bytes.NewReader(b)
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), br)
+	if err != nil {
+		logger.Get().Info("can't create request", zap.Error(err))
 		return
 	}
 
-	req.URL.Path = fmt.Sprintf("%s/%s", updatePath, path)
 	response, err := client.Do(req)
 	if err != nil {
-		log.Printf("call error. Error: %s\n", err)
+		logger.Get().Info("call error", zap.Error(err))
 		return
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		log.Println("Error write metrics")
-		log.Println("Path:", req.URL.Path)
-		log.Println("Code:", response.StatusCode)
+		logger.Get().Info(
+			"Error write metrics",
+			zap.String("path", req.URL.Path),
+			zap.Int("code", response.StatusCode),
+		)
 	}
 
 }

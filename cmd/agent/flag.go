@@ -21,8 +21,8 @@ func NewConfig() AgentConfig {
 	config := AgentConfig{}
 
 	flag.StringVar(&config.Endpoint, "a", "localhost:8080", "server endpoint")
-	flag.IntVar(&config.ReportInterval, "r", 0, "report interval sec")
-	flag.IntVar(&config.PoolInterval, "p", 0, "metrics pool interval sec")
+	flag.IntVar(&config.ReportInterval, "r", defaultReportInterval, "report interval sec")
+	flag.IntVar(&config.PoolInterval, "p", defaultPoolInterval, "metrics pool interval sec")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
