@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"html/template"
 	"net/http"
 	"time"
 	"ya-prac-project1/internal/logger"
@@ -19,29 +19,6 @@ type Storage interface {
 type ServerHandler struct {
 	storage Storage
 	handler *chi.Mux
-}
-
-type LogData struct {
-	URI    string
-	Method string
-	Status int
-	Size   int
-}
-
-type LogResponse struct {
-	http.ResponseWriter
-	Data LogData
-}
-
-func (r *LogResponse) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b)
-	r.Data.Size += size
-	return size, err
-}
-
-func (r *LogResponse) WriteHeader(statusCode int) {
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.Data.Status = statusCode
 }
 
 func New(storage Storage) *ServerHandler {
@@ -81,22 +58,44 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Write([]byte(v))
 	} else {
-		w.Write([]byte(getMetricPage(s.storage.GetRows())))
+		page := `
+	<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Report</title>
+</head>
+
+<body>
+    {{range .Rows}}<div>{{ . }}</div>
+</body>
+
+</html>
+	`
+		rows := s.storage.GetRows()
+		t, err := template.New("report").Parse(page)
+		if err != nil {
+			panic(err)
+		}
+		t.Execute(w, struct{ Rows []string }{Rows: rows})
+
+		// w.Write([]byte(getMetricPage(s.storage.GetRows())))
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func getMetricPage(rows []string) string {
-	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
+// func getMetricPage(rows []string) string {
+// 	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
 
-	for _, row := range rows {
-		page += fmt.Sprintf("<div>%s</div>", row)
-	}
+// 	for _, row := range rows {
+// 		page += fmt.Sprintf("<div>%s</div>", row)
+// 	}
 
-	page += `</body></html>`
-	return page
-}
+// 	page += `</body></html>`
+// 	return page
+// }
 
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()

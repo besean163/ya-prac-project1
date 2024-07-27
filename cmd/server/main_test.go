@@ -34,6 +34,7 @@ func TestUpdateMetrics(t *testing.T) {
 		code       int
 		method     string
 		path       string
+		body       string
 		checkValue bool
 		result     string
 	}{
@@ -71,6 +72,22 @@ func TestUpdateMetrics(t *testing.T) {
 			path:       "/",
 			checkValue: true,
 			result:     `<!DOCTYPE html><html><head><title>Report</title></head><body><div>testname: 20</div></body></html>`,
+		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/update/",
+			body:       `{"id": "test_name","type": "gauge","value": 20}`,
+			checkValue: false,
+			result:     "",
+		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/value/",
+			body:       `{"id": "test_name","type": "gauge"}`,
+			checkValue: false,
+			result:     `{"id": "test_name","type": "gauge","value": 20}`,
 		},
 	}
 
