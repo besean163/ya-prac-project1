@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -51,7 +52,14 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 		log.Printf("encode error. Error: %s\n", err)
 		return
 	}
-	body := bytes.NewReader(b)
+
+	buf := bytes.NewBuffer([]byte{})
+	_, err = gzip.NewWriter(buf).Write(b)
+	if err != nil {
+		log.Printf("compress error. Error: %s\n", err)
+		return
+	}
+	body := bytes.NewReader(buf.Bytes())
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), body)
 	if err != nil {
@@ -60,6 +68,7 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 
 	response, err := client.Do(req)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
@@ -130,7 +131,7 @@ func (s *ServerHandler) Mount() {
 }
 
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logMiddleware(s.handler).ServeHTTP(w, r)
+	logMiddleware(zipMiddleware(s.handler)).ServeHTTP(w, r)
 }
 
 func logMiddleware(h http.Handler) http.Handler {
@@ -155,6 +156,33 @@ func logMiddleware(h http.Handler) http.Handler {
 			zap.Int("size", lResponseWriter.Data.Size),
 			zap.Duration("time", duration),
 		)
+	})
+}
+
+func zipMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ow := w
+		acceptEncoding := r.Header.Get("Accept-Encoding")
+		supportGzip := strings.Contains(acceptEncoding, "gzip")
+		if supportGzip {
+			cw := newZipWriter(w)
+			ow = cw
+			defer cw.Close()
+		}
+
+		contentType := r.Header.Get("Content-Type")
+		contentEncoding := r.Header.Get("Content-Encoding")
+		sendGzip := strings.Contains(contentEncoding, "gzip")
+		if sendGzip && (contentType == "application/json" || contentType == "text/html") {
+			cr, err := newZipReader(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			r.Body = cr
+			defer cr.Close()
+		}
+		h.ServeHTTP(ow, r)
 	})
 }
 
