@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 type Storage interface {
@@ -127,34 +130,33 @@ func (s *ServerHandler) Mount() {
 }
 
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// logMiddleware(s.handler).ServeHTTP(w, r)
-	s.handler.ServeHTTP(w, r)
+	logMiddleware(s.handler).ServeHTTP(w, r)
 }
 
-// func logMiddleware(h http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		ld := LogData{}
-// 		lResponseWriter := &LogResponse{
-// 			ResponseWriter: w,
-// 			Data:           ld,
-// 		}
-// 		start := time.Now()
-// 		h.ServeHTTP(lResponseWriter, r)
-// 		duration := time.Since(start)
+func logMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ld := LogData{}
+		lResponseWriter := &LogResponse{
+			ResponseWriter: w,
+			Data:           ld,
+		}
+		start := time.Now()
+		h.ServeHTTP(lResponseWriter, r)
+		duration := time.Since(start)
 
-// 		lResponseWriter.Data.Method = r.Method
-// 		lResponseWriter.Data.URI = r.RequestURI
+		lResponseWriter.Data.Method = r.Method
+		lResponseWriter.Data.URI = r.RequestURI
 
-// 		logger.Get().Info(
-// 			"get request",
-// 			zap.String("method", lResponseWriter.Data.Method),
-// 			zap.String("uri", lResponseWriter.Data.URI),
-// 			zap.Int("status", lResponseWriter.Data.Status),
-// 			zap.Int("size", lResponseWriter.Data.Size),
-// 			zap.Duration("time", duration),
-// 		)
-// 	})
-// }
+		logger.Get().Info(
+			"get request",
+			zap.String("method", lResponseWriter.Data.Method),
+			zap.String("uri", lResponseWriter.Data.URI),
+			zap.Int("status", lResponseWriter.Data.Status),
+			zap.Int("size", lResponseWriter.Data.Size),
+			zap.Duration("time", duration),
+		)
+	})
+}
 
 func hasJsonHeader(r *http.Request) bool {
 	for header, values := range r.Header {
