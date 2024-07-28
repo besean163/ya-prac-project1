@@ -121,7 +121,7 @@ func (m MemStorage) GetMetrics() []metrics.Metrics {
 	for k, v := range m.Counters {
 		delta := int64(v)
 		metric := metrics.Metrics{}
-		metric.MType = metricTypeGauge
+		metric.MType = metricTypeCounter
 		metric.ID = k
 		metric.Delta = &delta
 		result = append(result, metric)

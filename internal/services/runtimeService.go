@@ -34,7 +34,7 @@ func (s *RuntimeService) UpdateMetrics() {
 
 	rand.New(rand.NewSource(time.Now().Unix()))
 	s.storage.SetValue("gauge", "RandomValue", fmt.Sprint(rand.Float64()))
-	s.storage.SetValue("counters", "PollCount", fmt.Sprint(1))
+	s.storage.SetValue("counter", "PollCount", fmt.Sprint(1))
 }
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
@@ -80,29 +80,32 @@ func getRuntimeMetrics() map[string]string {
 	stat := runtime.MemStats{}
 	runtime.ReadMemStats(&stat)
 	return map[string]string{
-		"Alloc":        fmt.Sprint(stat.Alloc),
-		"BuckHashSys":  fmt.Sprint(stat.BuckHashSys),
-		"Frees":        fmt.Sprint(stat.Frees),
-		"GCSys":        fmt.Sprint(stat.GCSys),
-		"HeapAlloc":    fmt.Sprint(stat.HeapAlloc),
-		"HeapIdle":     fmt.Sprint(stat.HeapIdle),
-		"HeapInuse":    fmt.Sprint(stat.HeapInuse),
-		"HeapObjects":  fmt.Sprint(stat.HeapObjects),
-		"HeapReleased": fmt.Sprint(stat.HeapReleased),
-		"LastGC":       fmt.Sprint(stat.LastGC),
-		"Lookups":      fmt.Sprint(stat.Lookups),
-		"MCacheInuse":  fmt.Sprint(stat.MCacheInuse),
-		"MCacheSys":    fmt.Sprint(stat.MCacheSys),
-		"MSpanInuse":   fmt.Sprint(stat.MSpanInuse),
-		"MSpanSys":     fmt.Sprint(stat.MSpanSys),
-		"Mallocs":      fmt.Sprint(stat.Mallocs),
-		"NextGC":       fmt.Sprint(stat.NextGC),
-		"NumForcedGC":  fmt.Sprint(stat.NumForcedGC),
-		"NumGC":        fmt.Sprint(stat.NumGC),
-		"OtherSys":     fmt.Sprint(stat.OtherSys),
-		"PauseTotalNs": fmt.Sprint(stat.PauseTotalNs),
-		"StackInuse":   fmt.Sprint(stat.StackInuse),
-		"Sys":          fmt.Sprint(stat.Sys),
-		"TotalAlloc":   fmt.Sprint(stat.TotalAlloc),
+		"Alloc":         fmt.Sprint(stat.Alloc),
+		"BuckHashSys":   fmt.Sprint(stat.BuckHashSys),
+		"Frees":         fmt.Sprint(stat.Frees),
+		"GCSys":         fmt.Sprint(stat.GCSys),
+		"HeapAlloc":     fmt.Sprint(stat.HeapAlloc),
+		"HeapIdle":      fmt.Sprint(stat.HeapIdle),
+		"HeapInuse":     fmt.Sprint(stat.HeapInuse),
+		"HeapObjects":   fmt.Sprint(stat.HeapObjects),
+		"HeapReleased":  fmt.Sprint(stat.HeapReleased),
+		"LastGC":        fmt.Sprint(stat.LastGC),
+		"Lookups":       fmt.Sprint(stat.Lookups),
+		"MCacheInuse":   fmt.Sprint(stat.MCacheInuse),
+		"MCacheSys":     fmt.Sprint(stat.MCacheSys),
+		"MSpanInuse":    fmt.Sprint(stat.MSpanInuse),
+		"MSpanSys":      fmt.Sprint(stat.MSpanSys),
+		"Mallocs":       fmt.Sprint(stat.Mallocs),
+		"NextGC":        fmt.Sprint(stat.NextGC),
+		"NumForcedGC":   fmt.Sprint(stat.NumForcedGC),
+		"NumGC":         fmt.Sprint(stat.NumGC),
+		"OtherSys":      fmt.Sprint(stat.OtherSys),
+		"PauseTotalNs":  fmt.Sprint(stat.PauseTotalNs),
+		"StackInuse":    fmt.Sprint(stat.StackInuse),
+		"Sys":           fmt.Sprint(stat.Sys),
+		"TotalAlloc":    fmt.Sprint(stat.TotalAlloc),
+		"StackSys":      fmt.Sprint(stat.StackSys),
+		"HeapSys":       fmt.Sprint(stat.HeapSys),
+		"GCCPUFraction": fmt.Sprint(stat.GCCPUFraction),
 	}
 }

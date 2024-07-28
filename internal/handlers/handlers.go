@@ -36,7 +36,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hasJsonHeader(r) {
+	if hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -67,7 +67,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && hasJsonHeader(r) {
+	if r.Method == http.MethodPost && hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -158,7 +158,7 @@ func logMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-func hasJsonHeader(r *http.Request) bool {
+func hasJSONHeader(r *http.Request) bool {
 	for header, values := range r.Header {
 		if header != "Content-Type" {
 			continue
