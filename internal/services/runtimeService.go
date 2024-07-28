@@ -1,18 +1,21 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"time"
+	"ya-prac-project1/internal/metrics"
 )
 
 type Storage interface {
 	SetValue(metricType, name, value string) error
 	GetValue(metricType, name string) (string, error)
-	GetMetricPaths() []string
+	GetMetrics() []metrics.Metrics
 }
 
 type RuntimeService struct {
@@ -35,22 +38,29 @@ func (s *RuntimeService) UpdateMetrics() {
 }
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
-	paths := s.storage.GetMetricPaths()
-	for _, path := range paths {
-		makeUpdateRequest(path, serverEndpoint)
+	for _, metric := range s.storage.GetMetrics() {
+		makeUpdateRequest(metric, serverEndpoint)
 	}
 }
 
-func makeUpdateRequest(path string, serverEndpoint string) {
-	updatePath := "/update"
+func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s", serverEndpoint), nil)
+
+	b, err := json.Marshal(metric)
+	if err != nil {
+		log.Printf("encode error. Error: %s\n", err)
+		return
+	}
+	body := bytes.NewReader(b)
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), body)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
 		return
 	}
 
-	req.URL.Path = fmt.Sprintf("%s/%s", updatePath, path)
+	req.Header.Set("Content-Type", "application/json")
+
 	response, err := client.Do(req)
 	if err != nil {
 		log.Printf("call error. Error: %s\n", err)

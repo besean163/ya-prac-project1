@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"ya-prac-project1/internal/metrics"
 )
 
 const (
@@ -106,14 +107,24 @@ func checkWrongType(t string) error {
 	return nil
 }
 
-func (m MemStorage) GetMetricPaths() []string {
-	paths := []string{}
+func (m MemStorage) GetMetrics() []metrics.Metrics {
+	result := []metrics.Metrics{}
 	for k, v := range m.Gauges {
-		paths = append(paths, fmt.Sprintf("gauge/%s/%v", k, v))
+		value := float64(v)
+		metric := metrics.Metrics{}
+		metric.MType = metricTypeGauge
+		metric.ID = k
+		metric.Value = &value
+		result = append(result, metric)
 	}
 
 	for k, v := range m.Counters {
-		paths = append(paths, fmt.Sprintf("counter/%s/%v", k, v))
+		delta := int64(v)
+		metric := metrics.Metrics{}
+		metric.MType = metricTypeGauge
+		metric.ID = k
+		metric.Delta = &delta
+		result = append(result, metric)
 	}
-	return paths
+	return result
 }

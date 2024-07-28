@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"html/template"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"time"
-	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 type Storage interface {
@@ -33,69 +33,86 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mType := chi.URLParam(r, "metric_type")
-	mName := chi.URLParam(r, "metric_name")
-	mValue := chi.URLParam(r, "metric_value")
+	if hasJsonHeader(r) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
-	err := s.storage.SetValue(mType, mName, mValue)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		metric := metrics.Metrics{}
+		if err := json.Unmarshal(body, &metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		err = s.storage.SetValue(metric.MType, metric.ID, metric.GetValue())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		mType := chi.URLParam(r, "metric_type")
+		mName := chi.URLParam(r, "metric_name")
+		mValue := chi.URLParam(r, "metric_value")
+
+		err := s.storage.SetValue(mType, mName, mValue)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	mType := chi.URLParam(r, "metric_type")
-	mName := chi.URLParam(r, "metric_name")
+	if r.Method == http.MethodPost && hasJsonHeader(r) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
-	if mType != "" && mName != "" {
-		v, err := s.storage.GetValue(mType, mName)
+		metric := metrics.Metrics{}
+		if err := json.Unmarshal(body, &metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		v, err := s.storage.GetValue(metric.MType, metric.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(v))
-	} else {
-		page := `
-	<!DOCTYPE html>
-<html>
+		metric.SetValue(v)
 
-<head>
-    <meta charset="UTF-8">
-    <title>Report</title>
-</head>
-
-<body>
-    {{range .Rows}}<div>{{ . }}</div>
-</body>
-
-</html>
-	`
-		rows := s.storage.GetRows()
-		t, err := template.New("report").Parse(page)
+		body, err = json.Marshal(metric)
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		t.Execute(w, struct{ Rows []string }{Rows: rows})
-
-		// w.Write([]byte(getMetricPage(s.storage.GetRows())))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	} else {
+		mType := chi.URLParam(r, "metric_type")
+		mName := chi.URLParam(r, "metric_name")
+		if mType != "" && mName != "" {
+			v, err := s.storage.GetValue(mType, mName)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			w.Write([]byte(v))
+		} else {
+			w.Write([]byte(getMetricPage(s.storage.GetRows())))
+		}
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
-// func getMetricPage(rows []string) string {
-// 	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
+func getMetricPage(rows []string) string {
+	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
 
-// 	for _, row := range rows {
-// 		page += fmt.Sprintf("<div>%s</div>", row)
-// 	}
+	for _, row := range rows {
+		page += fmt.Sprintf("<div>%s</div>", row)
+	}
 
-// 	page += `</body></html>`
-// 	return page
-// }
+	page += `</body></html>`
+	return page
+}
 
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()
@@ -103,35 +120,52 @@ func (s *ServerHandler) Mount() {
 		r.Get("/", s.GetMetrics)
 		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
 		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)
+		r.Post("/update/", s.UpdateMetrics)
+		r.Post("/value/", s.GetMetrics)
 	})
 	s.handler = router
 }
 
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logMiddleware(s.handler).ServeHTTP(w, r)
+	// logMiddleware(s.handler).ServeHTTP(w, r)
+	s.handler.ServeHTTP(w, r)
 }
 
-func logMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ld := LogData{}
-		lResponseWriter := &LogResponse{
-			ResponseWriter: w,
-			Data:           ld,
+// func logMiddleware(h http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		ld := LogData{}
+// 		lResponseWriter := &LogResponse{
+// 			ResponseWriter: w,
+// 			Data:           ld,
+// 		}
+// 		start := time.Now()
+// 		h.ServeHTTP(lResponseWriter, r)
+// 		duration := time.Since(start)
+
+// 		lResponseWriter.Data.Method = r.Method
+// 		lResponseWriter.Data.URI = r.RequestURI
+
+// 		logger.Get().Info(
+// 			"get request",
+// 			zap.String("method", lResponseWriter.Data.Method),
+// 			zap.String("uri", lResponseWriter.Data.URI),
+// 			zap.Int("status", lResponseWriter.Data.Status),
+// 			zap.Int("size", lResponseWriter.Data.Size),
+// 			zap.Duration("time", duration),
+// 		)
+// 	})
+// }
+
+func hasJsonHeader(r *http.Request) bool {
+	for header, values := range r.Header {
+		if header != "Content-Type" {
+			continue
 		}
-		start := time.Now()
-		h.ServeHTTP(lResponseWriter, r)
-		duration := time.Since(start)
-
-		lResponseWriter.Data.Method = r.Method
-		lResponseWriter.Data.URI = r.RequestURI
-
-		logger.Get().Info(
-			"get request",
-			zap.String("method", lResponseWriter.Data.Method),
-			zap.String("uri", lResponseWriter.Data.URI),
-			zap.Int("status", lResponseWriter.Data.Status),
-			zap.Int("size", lResponseWriter.Data.Size),
-			zap.Duration("time", duration),
-		)
-	})
+		for _, value := range values {
+			if value == "application/json" {
+				return true
+			}
+		}
+	}
+	return false
 }
