@@ -128,3 +128,13 @@ func (m MemStorage) GetMetrics() []metrics.Metrics {
 	}
 	return result
 }
+
+func (m MemStorage) SetMetrics(metrics []metrics.Metrics) error {
+	for _, metric := range metrics {
+		err := m.SetValue(metric.MType, metric.ID, metric.GetValue())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
