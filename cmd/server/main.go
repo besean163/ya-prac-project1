@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/inmem"
 	"ya-prac-project1/internal/logger"
@@ -47,12 +46,14 @@ func run(config ServerConfig) error {
 		Handler: h,
 	}
 
+	// нашел этот кусок кода в интернете, понимаю его туманно
+	// смысл в обработке входящих сигналов системы для отсрочки выхода из программы чтобы сделать итоговый дамп
 	stopped := make(chan struct{})
 	go func() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		<-sigint
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
 			log.Printf("HTTP server shutdown err: %v", err)
@@ -63,5 +64,10 @@ func run(config ServerConfig) error {
 	}()
 
 	fmt.Printf("Start server on: %s\n", config.Endpoint)
-	return srv.ListenAndServe()
+	if err = srv.ListenAndServe(); err != nil {
+		return err
+	}
+
+	<-stopped
+	return nil
 }
