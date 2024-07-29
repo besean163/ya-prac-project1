@@ -21,6 +21,7 @@ func (r *LogResponse) Write(b []byte) (int, error) {
 }
 
 func (r *LogResponse) WriteHeader(statusCode int) {
+	// vet говорит что эта строка лишняя, не понимаю почему
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.Data.Status = statusCode
 }

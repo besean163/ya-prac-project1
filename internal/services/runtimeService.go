@@ -53,15 +53,15 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 		return
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	_, err = gzip.NewWriter(buf).Write(b)
-	if err != nil {
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	if _, err = gw.Write(b); err != nil {
 		log.Printf("compress error. Error: %s\n", err)
 		return
 	}
-	body := bytes.NewReader(buf.Bytes())
+	gw.Close()
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), body)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), &buf)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
 		return

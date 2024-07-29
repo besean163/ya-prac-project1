@@ -49,7 +49,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.storage.SetValue(metric.MType, metric.ID, metric.GetValue())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
 	} else {
@@ -79,6 +79,7 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		v, err := s.storage.GetValue(metric.MType, metric.ID)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -102,6 +103,7 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Write([]byte(v))
 		} else {
+			w.Header().Set("Content-Type", "text/html")
 			w.Write([]byte(getMetricPage(s.storage.GetRows())))
 		}
 	}
@@ -165,6 +167,7 @@ func zipMiddleware(h http.Handler) http.Handler {
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportGzip {
+			w.Header().Set("Content-Encoding", "gzip")
 			cw := newZipWriter(w)
 			ow = cw
 			defer cw.Close()
