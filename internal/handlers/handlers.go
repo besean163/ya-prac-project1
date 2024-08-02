@@ -26,14 +26,14 @@ type Storage interface {
 
 type ServerHandler struct {
 	storage Storage
-	baseDns string
+	baseDNS string
 	handler *chi.Mux
 }
 
-func New(storage Storage, baseDns string) *ServerHandler {
+func New(storage Storage, baseDNS string) *ServerHandler {
 	s := &ServerHandler{}
 	s.storage = storage
-	s.baseDns = baseDns
+	s.baseDNS = baseDNS
 	return s
 }
 
