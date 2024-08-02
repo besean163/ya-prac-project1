@@ -38,7 +38,7 @@ func run(config ServerConfig) error {
 		go storeService.Run(config.StoreInterval)
 	}
 
-	h := handlers.New(store)
+	h := handlers.New(store, config.BaseDns)
 	h.Mount()
 
 	srv := &http.Server{

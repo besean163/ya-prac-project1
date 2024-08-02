@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +14,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Storage interface {
@@ -22,12 +26,14 @@ type Storage interface {
 
 type ServerHandler struct {
 	storage Storage
+	baseDns string
 	handler *chi.Mux
 }
 
-func New(storage Storage) *ServerHandler {
+func New(storage Storage, baseDns string) *ServerHandler {
 	s := &ServerHandler{}
 	s.storage = storage
+	s.baseDns = baseDns
 	return s
 }
 
@@ -109,6 +115,19 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	db, err := sql.Open("pgx", s.baseDns)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = db.PingContext(context.Background())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func getMetricPage(rows []string) string {
 	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
 
@@ -123,6 +142,7 @@ func getMetricPage(rows []string) string {
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
+		r.Get("/ping", s.Ping)
 		r.Get("/", s.GetMetrics)
 		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
 		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)

@@ -11,6 +11,7 @@ type ServerConfig struct {
 	StoreInterval int
 	StoreFile     string
 	Restore       bool
+	BaseDns       string
 }
 
 func NewConfig() ServerConfig {
@@ -18,10 +19,12 @@ func NewConfig() ServerConfig {
 	storeIntervalFlag := 0
 	storeFileFlag := ""
 	restoreFlag := false
+	baseDnsFlag := ""
 	flag.StringVar(&endpointFlag, "a", "localhost:8080", "server endpoint")
 	flag.IntVar(&storeIntervalFlag, "i", 300, "store interval")
 	flag.StringVar(&storeFileFlag, "f", "store_metrics", "store file")
 	flag.BoolVar(&restoreFlag, "r", true, "restore metrics")
+	flag.StringVar(&baseDnsFlag, "d", "", "base dns")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -46,10 +49,15 @@ func NewConfig() ServerConfig {
 		}
 	}
 
+	if baseDnsEnv := os.Getenv("DATABASE_DSN"); baseDnsEnv != "" {
+		baseDnsFlag = baseDnsEnv
+	}
+
 	return ServerConfig{
 		Endpoint:      endpointFlag,
 		StoreInterval: storeIntervalFlag,
 		StoreFile:     storeFileFlag,
 		Restore:       restoreFlag,
+		BaseDns:       baseDnsFlag,
 	}
 }

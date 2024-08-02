@@ -28,7 +28,7 @@ func (mock StorageMock) GetRows() []string {
 
 func TestUpdateMetrics(t *testing.T) {
 	store := StorageMock{}
-	h := handlers.New(&store)
+	h := handlers.New(&store, "")
 
 	tests := []struct {
 		code       int
