@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"ya-prac-project1/internal/handlers"
+	"ya-prac-project1/internal/logger"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,12 +28,13 @@ func (mock StorageMock) GetRows() []string {
 
 func TestUpdateMetrics(t *testing.T) {
 	store := StorageMock{}
-	h := handlers.New(&store)
+	h := handlers.New(&store, "")
 
 	tests := []struct {
 		code       int
 		method     string
 		path       string
+		body       string
 		checkValue bool
 		result     string
 	}{
@@ -71,14 +73,32 @@ func TestUpdateMetrics(t *testing.T) {
 			checkValue: true,
 			result:     `<!DOCTYPE html><html><head><title>Report</title></head><body><div>testname: 20</div></body></html>`,
 		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/update/",
+			body:       `{"id": "test_name","type": "gauge","value": 20}`,
+			checkValue: false,
+			result:     "",
+		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/value/",
+			body:       `{"id": "test_name","type": "gauge"}`,
+			checkValue: false,
+			result:     `{"id": "test_name","type": "gauge","value": 20}`,
+		},
 	}
 
 	for _, test := range tests {
+		logger.Set()
 		t.Run(test.path, func(t *testing.T) {
 			req, _ := http.NewRequest(test.method, test.path, nil)
 			rr := httptest.NewRecorder()
 
-			h.GetHandler().ServeHTTP(rr, req)
+			h.Mount()
+			h.ServeHTTP(rr, req)
 
 			assert.Equal(t, test.code, rr.Code)
 
