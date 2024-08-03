@@ -3,8 +3,10 @@ package inmem
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 )
 
@@ -40,11 +42,13 @@ func (s StoreService) Restore(restore bool) error {
 			if !buf.Scan() {
 				break
 			}
+			fmt.Println(string(buf.Bytes()))
 			data := buf.Bytes()
 			item := metrics.Metrics{}
 			err := json.Unmarshal(data, &item)
 			if err != nil {
-				return err
+				logger.Get().Info(err.Error())
+				continue
 			}
 			items = append(items, item)
 		}
