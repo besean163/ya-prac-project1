@@ -13,8 +13,8 @@ type AgentConfig struct {
 }
 
 const (
-	defaultPoolInterval   = 1
-	defaultReportInterval = 2
+	defaultPoolInterval   = 2
+	defaultReportInterval = 3
 )
 
 func NewConfig() AgentConfig {

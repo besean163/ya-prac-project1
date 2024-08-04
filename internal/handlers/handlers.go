@@ -21,7 +21,8 @@ import (
 type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
-	GetRows() []string
+	GetMetrics() []*metrics.Metrics
+	// GetRows() []string
 }
 
 type ServerHandler struct {
@@ -110,7 +111,15 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(v))
 		} else {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(getMetricPage(s.storage.GetRows())))
+
+			metrics := s.storage.GetMetrics()
+			rows := make([]string, 0)
+			for _, metric := range metrics {
+				row := fmt.Sprintf("%s: %s", metric.ID, metric.GetValue())
+				rows = append(rows, row)
+
+			}
+			w.Write([]byte(getMetricPage(rows)))
 		}
 	}
 }

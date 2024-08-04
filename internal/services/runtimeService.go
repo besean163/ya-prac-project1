@@ -16,7 +16,7 @@ import (
 type Storage interface {
 	SetValue(metricType, name, value string) error
 	GetValue(metricType, name string) (string, error)
-	GetMetrics() []metrics.Metrics
+	GetMetrics() []*metrics.Metrics
 }
 
 type RuntimeService struct {
@@ -40,7 +40,7 @@ func (s *RuntimeService) UpdateMetrics() {
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
 	for _, metric := range s.storage.GetMetrics() {
-		makeUpdateRequest(metric, serverEndpoint)
+		makeUpdateRequest(*metric, serverEndpoint)
 	}
 }
 

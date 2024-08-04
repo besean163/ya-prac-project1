@@ -7,6 +7,7 @@ import (
 	"testing"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -20,6 +21,18 @@ func (mock *StorageMock) SetValue(t, name, value string) error {
 
 func (mock *StorageMock) GetValue(t, name string) (string, error) {
 	return "20", nil
+}
+
+func (mock *StorageMock) GetMetrics() []*metrics.Metrics {
+	v := new(float64)
+	*v = 20
+	return []*metrics.Metrics{
+		{
+			ID:    "testname",
+			MType: "gauge",
+			Value: v,
+		},
+	}
 }
 
 func (mock StorageMock) GetRows() []string {

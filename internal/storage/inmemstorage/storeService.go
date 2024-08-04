@@ -1,4 +1,4 @@
-package inmem
+package inmemstorage
 
 import (
 	"bufio"
@@ -11,11 +11,11 @@ import (
 )
 
 type StoreService struct {
-	storage  *MemStorage
+	storage  *Storage
 	filePath string
 }
 
-func NewService(storage *MemStorage, filePath string) StoreService {
+func NewService(storage *Storage, filePath string) StoreService {
 	return StoreService{
 		storage:  storage,
 		filePath: filePath,

@@ -22,7 +22,7 @@ func NewConfig() ServerConfig {
 	baseDNSFlag := ""
 	flag.StringVar(&endpointFlag, "a", "localhost:8080", "server endpoint")
 	flag.IntVar(&storeIntervalFlag, "i", 300, "store interval")
-	flag.StringVar(&storeFileFlag, "f", "store_metrics", "store file")
+	flag.StringVar(&storeFileFlag, "f", "", "store file")
 	flag.BoolVar(&restoreFlag, "r", true, "restore metrics")
 	flag.StringVar(&baseDNSFlag, "d", "", "base dns")
 	flag.Parse()

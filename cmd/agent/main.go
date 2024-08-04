@@ -2,15 +2,15 @@ package main
 
 import (
 	"time"
-	"ya-prac-project1/internal/inmem"
 	"ya-prac-project1/internal/services"
+	"ya-prac-project1/internal/storage/inmemstorage"
 )
 
 func main() {
 	c := NewConfig()
 
-	storage := inmem.NewStorage()
-	service := services.NewRuntimeService(&storage)
+	storage := inmemstorage.NewStorage()
+	service := services.NewRuntimeService(storage)
 
 	go func() {
 		for {
