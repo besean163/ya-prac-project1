@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/storage/databasestorage"
 	"ya-prac-project1/internal/storage/filestorage"
 	"ya-prac-project1/internal/storage/inmemstorage"
 
@@ -43,17 +44,6 @@ func run(config ServerConfig) error {
 		return err
 	}
 
-	// store := inmem.NewStorage()
-	// storeService := inmem.NewService(&store, config.StoreFile)
-	// err = storeService.Restore(config.Restore)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if config.StoreInterval > 0 {
-	// 	go storeService.Run(config.StoreInterval)
-	// }
-
 	h := handlers.New(store, config.BaseDNS)
 	h.Mount()
 
@@ -74,9 +64,6 @@ func run(config ServerConfig) error {
 
 	g.Go(func() error {
 		<-gCtx.Done()
-		// делаем итоговый дамп
-		// storeService.Dump()
-
 		if err = srv.Shutdown(context.Background()); err != nil {
 			fmt.Printf("Start server on: %s\n", config.Endpoint)
 			return err
@@ -93,8 +80,9 @@ func run(config ServerConfig) error {
 }
 
 func getStorage(ctx context.Context, config ServerConfig) (handlers.Storage, error) {
-
-	if config.StoreFile != "" {
+	if config.BaseDNS != "" {
+		return databasestorage.NewStorage(config.BaseDNS)
+	} else if config.StoreFile != "" {
 		return filestorage.NewStorage(ctx, config.StoreFile, config.Restore, int64(config.StoreInterval))
 	}
 

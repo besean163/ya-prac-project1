@@ -125,6 +125,9 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	if s.baseDNS == "" {
+		return
+	}
 	db, err := sql.Open("pgx", s.baseDNS)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
