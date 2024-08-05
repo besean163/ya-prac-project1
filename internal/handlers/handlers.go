@@ -94,6 +94,7 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		if mType != "" && mName != "" {
 			v, err := s.storage.GetValue(mType, mName)
 			if err != nil {
+				fmt.Println("here")
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}

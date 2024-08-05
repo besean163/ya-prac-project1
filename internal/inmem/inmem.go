@@ -62,7 +62,7 @@ func NewStorage(filePath string, restore bool, dumpInterval int) (MemStorage, er
 	return storage, nil
 }
 
-func (m MemStorage) SetValue(metricType, name, value string) error {
+func (s MemStorage) SetValue(metricType, name, value string) error {
 	err := checkWrongType(metricType)
 	if err != nil {
 		return err
@@ -74,25 +74,25 @@ func (m MemStorage) SetValue(metricType, name, value string) error {
 		if err != nil {
 			return err
 		}
-		m.Gauges[name] = gauge(i)
+		s.Gauges[name] = gauge(i)
 	case metricTypeCounter:
 		i, err := strconv.Atoi(value)
 		if err != nil {
 			return err
 		}
-		m.Counters[name] += counter(i)
+		s.Counters[name] += counter(i)
 
 	default:
 		return errors.New("not correct type")
 	}
 
-	if m.dumpInterval == 0 {
-		m.Dump()
+	if s.dumpInterval == 0 {
+		s.Dump()
 	}
 	return nil
 }
 
-func (m MemStorage) GetValue(metricType, name string) (string, error) {
+func (s MemStorage) GetValue(metricType, name string) (string, error) {
 	var err error
 	err = checkWrongType(metricType)
 	if err != nil {
@@ -102,13 +102,13 @@ func (m MemStorage) GetValue(metricType, name string) (string, error) {
 	value := ""
 	switch metricType {
 	case metricTypeGauge:
-		v, ok := m.Gauges[name]
+		v, ok := s.Gauges[name]
 		if ok {
 			value = fmt.Sprint(v)
 		}
 
 	case metricTypeCounter:
-		v, ok := m.Counters[name]
+		v, ok := s.Counters[name]
 		if ok {
 			value = fmt.Sprint(v)
 		}
@@ -119,15 +119,15 @@ func (m MemStorage) GetValue(metricType, name string) (string, error) {
 	return value, err
 }
 
-func (m MemStorage) GetRows() []string {
+func (s MemStorage) GetRows() []string {
 	result := []string{}
 
-	for k, v := range m.Gauges {
+	for k, v := range s.Gauges {
 		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
 		result = append(result, row)
 	}
 
-	for k, v := range m.Counters {
+	for k, v := range s.Counters {
 		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
 		result = append(result, row)
 	}
@@ -142,9 +142,9 @@ func checkWrongType(t string) error {
 	return nil
 }
 
-func (m MemStorage) GetMetrics() []metrics.Metrics {
+func (s MemStorage) GetMetrics() []metrics.Metrics {
 	result := []metrics.Metrics{}
-	for k, v := range m.Gauges {
+	for k, v := range s.Gauges {
 		value := float64(v)
 		metric := metrics.Metrics{}
 		metric.MType = metricTypeGauge
@@ -153,7 +153,7 @@ func (m MemStorage) GetMetrics() []metrics.Metrics {
 		result = append(result, metric)
 	}
 
-	for k, v := range m.Counters {
+	for k, v := range s.Counters {
 		delta := int64(v)
 		metric := metrics.Metrics{}
 		metric.MType = metricTypeCounter
@@ -164,9 +164,9 @@ func (m MemStorage) GetMetrics() []metrics.Metrics {
 	return result
 }
 
-func (m MemStorage) SetMetrics(metrics []metrics.Metrics) error {
+func (s MemStorage) SetMetrics(metrics []metrics.Metrics) error {
 	for _, metric := range metrics {
-		err := m.SetValue(metric.MType, metric.ID, metric.GetValue())
+		err := s.SetValue(metric.MType, metric.ID, metric.GetValue())
 		if err != nil {
 			return err
 		}
