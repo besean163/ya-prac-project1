@@ -27,7 +27,7 @@ func NewConfig() ServerConfig {
 	restoreFlag := false
 	flag.StringVar(&endpointFlag, "a", endpointDefault, "server endpoint")
 	flag.IntVar(&storeIntervalFlag, "i", storeIntervalDefault, "store interval")
-	flag.StringVar(&storeFileFlag, "f", storeFileFlag, "store file")
+	flag.StringVar(&storeFileFlag, "f", storeFileDefault, "store file")
 	flag.BoolVar(&restoreFlag, "r", restoreFlagDefault, "restore metrics")
 	flag.Parse()
 
