@@ -1,10 +1,15 @@
 package inmem
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
+	"time"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 )
 
@@ -23,12 +28,38 @@ type gauge float64
 type counter int64
 
 type MemStorage struct {
-	Gauges   map[string]gauge
-	Counters map[string]counter
+	Gauges       map[string]gauge
+	Counters     map[string]counter
+	filePath     string
+	dumpInterval int
 }
 
-func NewStorage() MemStorage {
-	return MemStorage{Gauges: map[string]gauge{}, Counters: map[string]counter{}}
+func NewStorage(filePath string, restore bool, dumpInterval int) (MemStorage, error) {
+	storage := MemStorage{
+		Gauges:       map[string]gauge{},
+		Counters:     map[string]counter{},
+		dumpInterval: dumpInterval,
+		filePath:     filePath,
+	}
+
+	// восстанавливаем метрики по надобности
+	if restore {
+		if err := storage.Restore(); err != nil {
+			return storage, err
+		}
+	}
+
+	// запускаем дампер если задан интервал
+	if storage.dumpInterval > 0 {
+		go func() {
+			for {
+				time.Sleep(time.Second * time.Duration(dumpInterval))
+				storage.Dump()
+			}
+		}()
+	}
+
+	return storage, nil
 }
 
 func (m MemStorage) SetValue(metricType, name, value string) error {
@@ -53,6 +84,10 @@ func (m MemStorage) SetValue(metricType, name, value string) error {
 
 	default:
 		return errors.New("not correct type")
+	}
+
+	if m.dumpInterval == 0 {
+		m.Dump()
 	}
 	return nil
 }
@@ -136,5 +171,59 @@ func (m MemStorage) SetMetrics(metrics []metrics.Metrics) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s MemStorage) Restore() error {
+	if s.filePath == "" {
+		return nil
+	}
+	file, err := os.OpenFile(s.filePath, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	buf := bufio.NewScanner(file)
+	items := []metrics.Metrics{}
+
+	for {
+		if !buf.Scan() {
+			break
+		}
+		fmt.Println(string(buf.Bytes()))
+		data := buf.Bytes()
+		item := metrics.Metrics{}
+		err := json.Unmarshal(data, &item)
+		if err != nil {
+			logger.Get().Info(err.Error())
+			continue
+		}
+		items = append(items, item)
+	}
+
+	s.SetMetrics(items)
+	return nil
+}
+
+func (s MemStorage) Dump() error {
+	if s.filePath == "" {
+		return nil
+	}
+
+	file, err := os.OpenFile(s.filePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+
+	items := s.GetMetrics()
+	for _, item := range items {
+		row, err := json.Marshal(item)
+		if err != nil {
+			return err
+		}
+
+		file.Write(row)
+		file.WriteString("\n")
+	}
+
 	return nil
 }

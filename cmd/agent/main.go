@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 	"ya-prac-project1/internal/inmem"
 	"ya-prac-project1/internal/services"
@@ -9,7 +10,11 @@ import (
 func main() {
 	c := NewConfig()
 
-	storage := inmem.NewStorage()
+	storage, err := inmem.NewStorage("", false, 0)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	service := services.NewRuntimeService(&storage)
 
 	go func() {
