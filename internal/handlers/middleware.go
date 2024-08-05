@@ -11,6 +11,12 @@ import (
 
 func logMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Get().Info(
+			"get request",
+			zap.String("method", r.Method),
+			zap.String("uri", r.URL.Path),
+		)
+
 		ld := LogData{}
 		lResponseWriter := &LogResponse{
 			ResponseWriter: w,
@@ -24,7 +30,7 @@ func logMiddleware(h http.Handler) http.Handler {
 		lResponseWriter.Data.URI = r.RequestURI
 
 		logger.Get().Info(
-			"get request",
+			"send response",
 			zap.String("method", lResponseWriter.Data.Method),
 			zap.String("uri", lResponseWriter.Data.URI),
 			zap.Int("status", lResponseWriter.Data.Status),
