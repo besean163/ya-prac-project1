@@ -189,7 +189,6 @@ func (s MemStorage) Restore() error {
 		if !buf.Scan() {
 			break
 		}
-		fmt.Println(string(buf.Bytes()))
 		data := buf.Bytes()
 		item := metrics.Metrics{}
 		err := json.Unmarshal(data, &item)
