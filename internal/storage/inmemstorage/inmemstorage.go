@@ -2,7 +2,6 @@ package inmemstorage
 
 import (
 	"errors"
-	"strconv"
 	"ya-prac-project1/internal/metrics"
 )
 
@@ -31,26 +30,7 @@ func (s *Storage) SetValue(metricType, name, value string) error {
 		s.Metrics = append(s.Metrics, metric)
 	}
 
-	switch metricType {
-	case metrics.MetricTypeGauge:
-		i, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return err
-		}
-		metric.Value = &i
-	case metrics.MetricTypeCounter:
-		i, err := strconv.Atoi(value)
-		if err != nil {
-			return err
-		}
-		delta := int64(i)
-		if metric.Delta == nil {
-			metric.Delta = &delta
-		} else {
-			delta := *metric.Delta + int64(i)
-			metric.Delta = &delta
-		}
-	}
+	metric.SetValue(value)
 	return nil
 }
 

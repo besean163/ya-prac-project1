@@ -22,7 +22,6 @@ type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
 	GetMetrics() []*metrics.Metrics
-	// GetRows() []string
 }
 
 type ServerHandler struct {
