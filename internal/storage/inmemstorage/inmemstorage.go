@@ -30,7 +30,10 @@ func (s *Storage) SetValue(metricType, name, value string) error {
 		s.Metrics = append(s.Metrics, metric)
 	}
 
-	metric.SetValue(value)
+	err = metric.SetValue(value)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
