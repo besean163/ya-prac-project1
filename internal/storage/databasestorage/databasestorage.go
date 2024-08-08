@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
-
-var tableName = "metrics"
 
 var database *sql.DB
 
@@ -38,11 +38,11 @@ func (s *Storage) SetValue(metricType, name, value string) error {
 			MType: metricType,
 			ID:    name,
 		}
-		// addMetric(metric)
+		s.AddMetric(metric)
 	}
 
 	metric.SetValue(value)
-	updateMetric(metric)
+	s.UpdateMetric(metric)
 	return nil
 }
 
@@ -61,11 +61,40 @@ func (s *Storage) GetValue(metricType, name string) (string, error) {
 }
 
 func (s *Storage) GetMetrics() []*metrics.Metrics {
-	return []*metrics.Metrics{}
+	items := []*metrics.Metrics{}
+	rows, err := database.Query("SELECT type,name,value,delta FROM metrics")
+	if err != nil {
+		logger.Get().Info(
+			"get metrics error",
+			zap.String("error", err.Error()),
+		)
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var metric metrics.Metrics
+		err := rows.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
+		if err != nil {
+			logger.Get().Info(
+				"parse metric error",
+				zap.String("error", err.Error()),
+			)
+		}
+		items = append(items, &metric)
+	}
+
+	if rows.Err() != nil {
+		logger.Get().Info(
+			"rows error",
+			zap.String("error", rows.Err().Error()),
+		)
+	}
+
+	return items
 }
 
 func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
-	row := database.QueryRow("SELECT type,name,value,delta FROM $1 WHERE type = $2 AND name = $3", tableName, metricType, name)
+	row := database.QueryRow("SELECT type,name,value,delta FROM metrics WHERE type = $1 AND name = $2", metricType, name)
 
 	if row.Err() != nil {
 		fmt.Println(row.Err())
@@ -109,7 +138,12 @@ func checkWrongType(metricType string) error {
 	return nil
 }
 
-func updateMetric(metric *metrics.Metrics) error {
+func (s Storage) UpdateMetric(metric *metrics.Metrics) error {
+	result, err := database.Exec("UPDATE metrics SET value = $1, delta = $2 WHERE type = $3 AND name = $4", metric.Value, metric.Delta, metric.MType, metric.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println(result.RowsAffected())
 	return nil
 }
 
