@@ -35,18 +35,6 @@ func NewStorage(ctx context.Context, path string, restore bool, dumpInterval int
 	return &store, nil
 }
 
-// func (s *Storage) SetValue(metricType, name, value string) error {
-// 	return nil
-// }
-
-// func (s *Storage) GetValue(metricType, name string) (string, error) {
-// 	return "", nil
-// }
-
-// func (m *Storage) GetRows() []string {
-// 	return nil
-// }
-
 func (s *Storage) restore() error {
 	file, err := os.OpenFile(s.FilePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {

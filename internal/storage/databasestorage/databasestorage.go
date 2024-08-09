@@ -155,3 +155,8 @@ func (s Storage) AddMetric(metric *metrics.Metrics) error {
 	fmt.Println(result.RowsAffected())
 	return nil
 }
+
+func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
+
+	return nil
+}

@@ -22,6 +22,7 @@ type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
 	GetMetrics() []*metrics.Metrics
+	SetMetrics(metrics []metrics.Metrics) error
 }
 
 type ServerHandler struct {
@@ -68,6 +69,34 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if hasJSONHeader(r) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		metrics := []metrics.Metrics{}
+		if err := json.Unmarshal(body, &metrics); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		fmt.Println(metrics)
+		// err = s.storage.SetValue(metric.MType, metric.ID, metric.GetValue())
+		// if err != nil {
+		// 	http.Error(w, err.Error(), http.StatusNotFound)
+		// 	return
+		// }
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -159,6 +188,7 @@ func (s *ServerHandler) Mount() {
 		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)
 		r.Post("/update/", s.UpdateMetrics)
 		r.Post("/value/", s.GetMetrics)
+		r.Post("/updates/", s.UpdateBatchMetrics)
 	})
 	s.handler = router
 }
