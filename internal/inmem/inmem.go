@@ -1,10 +1,16 @@
 package inmem
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
+	"time"
+	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
 )
 
 const (
@@ -22,15 +28,41 @@ type gauge float64
 type counter int64
 
 type MemStorage struct {
-	Gauges   map[string]gauge
-	Counters map[string]counter
+	Gauges       map[string]gauge
+	Counters     map[string]counter
+	filePath     string
+	dumpInterval int
 }
 
-func NewStorage() MemStorage {
-	return MemStorage{Gauges: map[string]gauge{}, Counters: map[string]counter{}}
+func NewStorage(filePath string, restore bool, dumpInterval int) (MemStorage, error) {
+	storage := MemStorage{
+		Gauges:       map[string]gauge{},
+		Counters:     map[string]counter{},
+		dumpInterval: dumpInterval,
+		filePath:     filePath,
+	}
+
+	// восстанавливаем метрики по надобности
+	if restore {
+		if err := storage.Restore(); err != nil {
+			return storage, err
+		}
+	}
+
+	// запускаем дампер если задан интервал
+	if storage.dumpInterval > 0 {
+		go func() {
+			for {
+				time.Sleep(time.Second * time.Duration(dumpInterval))
+				storage.Dump()
+			}
+		}()
+	}
+
+	return storage, nil
 }
 
-func (m MemStorage) SetValue(metricType, name, value string) error {
+func (s MemStorage) SetValue(metricType, name, value string) error {
 	err := checkWrongType(metricType)
 	if err != nil {
 		return err
@@ -42,21 +74,25 @@ func (m MemStorage) SetValue(metricType, name, value string) error {
 		if err != nil {
 			return err
 		}
-		m.Gauges[name] = gauge(i)
+		s.Gauges[name] = gauge(i)
 	case metricTypeCounter:
 		i, err := strconv.Atoi(value)
 		if err != nil {
 			return err
 		}
-		m.Counters[name] += counter(i)
+		s.Counters[name] += counter(i)
 
 	default:
 		return errors.New("not correct type")
 	}
+
+	if s.dumpInterval == 0 {
+		s.Dump()
+	}
 	return nil
 }
 
-func (m MemStorage) GetValue(metricType, name string) (string, error) {
+func (s MemStorage) GetValue(metricType, name string) (string, error) {
 	var err error
 	err = checkWrongType(metricType)
 	if err != nil {
@@ -66,13 +102,13 @@ func (m MemStorage) GetValue(metricType, name string) (string, error) {
 	value := ""
 	switch metricType {
 	case metricTypeGauge:
-		v, ok := m.Gauges[name]
+		v, ok := s.Gauges[name]
 		if ok {
 			value = fmt.Sprint(v)
 		}
 
 	case metricTypeCounter:
-		v, ok := m.Counters[name]
+		v, ok := s.Counters[name]
 		if ok {
 			value = fmt.Sprint(v)
 		}
@@ -83,15 +119,15 @@ func (m MemStorage) GetValue(metricType, name string) (string, error) {
 	return value, err
 }
 
-func (m MemStorage) GetRows() []string {
+func (s MemStorage) GetRows() []string {
 	result := []string{}
 
-	for k, v := range m.Gauges {
+	for k, v := range s.Gauges {
 		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
 		result = append(result, row)
 	}
 
-	for k, v := range m.Counters {
+	for k, v := range s.Counters {
 		row := fmt.Sprintf("%s: %s\n", k, fmt.Sprint(v))
 		result = append(result, row)
 	}
@@ -106,14 +142,87 @@ func checkWrongType(t string) error {
 	return nil
 }
 
-func (m MemStorage) GetMetricPaths() []string {
-	paths := []string{}
-	for k, v := range m.Gauges {
-		paths = append(paths, fmt.Sprintf("gauge/%s/%v", k, v))
+func (s MemStorage) GetMetrics() []metrics.Metrics {
+	result := []metrics.Metrics{}
+	for k, v := range s.Gauges {
+		value := float64(v)
+		metric := metrics.Metrics{}
+		metric.MType = metricTypeGauge
+		metric.ID = k
+		metric.Value = &value
+		result = append(result, metric)
 	}
 
-	for k, v := range m.Counters {
-		paths = append(paths, fmt.Sprintf("counter/%s/%v", k, v))
+	for k, v := range s.Counters {
+		delta := int64(v)
+		metric := metrics.Metrics{}
+		metric.MType = metricTypeCounter
+		metric.ID = k
+		metric.Delta = &delta
+		result = append(result, metric)
 	}
-	return paths
+	return result
+}
+
+func (s MemStorage) SetMetrics(metrics []metrics.Metrics) error {
+	for _, metric := range metrics {
+		err := s.SetValue(metric.MType, metric.ID, metric.GetValue())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s MemStorage) Restore() error {
+	if s.filePath == "" {
+		return nil
+	}
+	file, err := os.OpenFile(s.filePath, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	buf := bufio.NewScanner(file)
+	items := []metrics.Metrics{}
+
+	for {
+		if !buf.Scan() {
+			break
+		}
+		data := buf.Bytes()
+		item := metrics.Metrics{}
+		err := json.Unmarshal(data, &item)
+		if err != nil {
+			logger.Get().Info(err.Error())
+			continue
+		}
+		items = append(items, item)
+	}
+
+	s.SetMetrics(items)
+	return nil
+}
+
+func (s MemStorage) Dump() error {
+	if s.filePath == "" {
+		return nil
+	}
+
+	file, err := os.OpenFile(s.filePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+
+	items := s.GetMetrics()
+	for _, item := range items {
+		row, err := json.Marshal(item)
+		if err != nil {
+			return err
+		}
+
+		file.Write(row)
+		file.WriteString("\n")
+	}
+
+	return nil
 }

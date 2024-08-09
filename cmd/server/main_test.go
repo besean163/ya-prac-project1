@@ -1,38 +1,36 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"ya-prac-project1/internal/handlers"
+	mock "ya-prac-project1/internal/handlers/mocks"
+	"ya-prac-project1/internal/logger"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type StorageMock struct {
-}
-
-func (mock *StorageMock) SetValue(t, name, value string) error {
-	return nil
-}
-
-func (mock *StorageMock) GetValue(t, name string) (string, error) {
-	return "20", nil
-}
-
-func (mock StorageMock) GetRows() []string {
-	return []string{"testname: 20"}
-}
-
 func TestUpdateMetrics(t *testing.T) {
-	store := StorageMock{}
-	h := handlers.New(&store)
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+
+	h := handlers.New(store)
 
 	tests := []struct {
 		code       int
 		method     string
 		path       string
+		body       string
 		checkValue bool
 		result     string
 	}{
@@ -71,14 +69,32 @@ func TestUpdateMetrics(t *testing.T) {
 			checkValue: true,
 			result:     `<!DOCTYPE html><html><head><title>Report</title></head><body><div>testname: 20</div></body></html>`,
 		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/update/",
+			body:       `{"id": "test_name","type": "gauge","value": 20}`,
+			checkValue: false,
+			result:     "",
+		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/value/",
+			body:       `{"id": "test_name","type": "gauge"}`,
+			checkValue: false,
+			result:     `{"id": "test_name","type": "gauge","value": 20}`,
+		},
 	}
 
 	for _, test := range tests {
+		logger.Set()
 		t.Run(test.path, func(t *testing.T) {
 			req, _ := http.NewRequest(test.method, test.path, nil)
 			rr := httptest.NewRecorder()
 
-			h.GetHandler().ServeHTTP(rr, req)
+			h.Mount()
+			h.ServeHTTP(rr, req)
 
 			assert.Equal(t, test.code, rr.Code)
 
@@ -88,4 +104,73 @@ func TestUpdateMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGzipCompression(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+
+	h := handlers.New(store)
+
+	valueResponse := "20"
+	t.Run("value", func(t *testing.T) {
+
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(valueResponse))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		req, _ := http.NewRequest(http.MethodGet, "/value/gauge/testname", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rr := httptest.NewRecorder()
+
+		h.Mount()
+		h.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		respBody := bytes.NewBuffer(nil)
+		zr, err := gzip.NewReader(rr.Body)
+		require.NoError(t, err)
+		zr.Read(respBody.Bytes())
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+		require.JSONEq(t, valueResponse, string(b))
+	})
+
+	allValuesResponse := "<!DOCTYPE html><html><head><title>Report</title></head><body><div>testname: 20</div></body></html>"
+	t.Run("all_values", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(allValuesResponse))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		req, _ := http.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rr := httptest.NewRecorder()
+
+		h.Mount()
+		h.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		respBody := bytes.NewBuffer(nil)
+		zr, err := gzip.NewReader(rr.Body)
+		require.NoError(t, err)
+		zr.Read(respBody.Bytes())
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+
+		require.Equal(t, allValuesResponse, string(b))
+	})
 }
