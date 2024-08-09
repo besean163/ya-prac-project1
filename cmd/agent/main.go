@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 	"ya-prac-project1/internal/services"
 	"ya-prac-project1/internal/storage/inmemstorage"

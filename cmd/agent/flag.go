@@ -6,23 +6,24 @@ import (
 	"strconv"
 )
 
+const (
+	endpointDefault       = "localhost:8080"
+	reportIntervalDefault = 2
+	poolIntervalDefault   = 1
+)
+
 type AgentConfig struct {
 	Endpoint       string
 	ReportInterval int
 	PoolInterval   int
 }
 
-const (
-	defaultPoolInterval   = 2
-	defaultReportInterval = 3
-)
-
 func NewConfig() AgentConfig {
 	config := AgentConfig{}
 
-	flag.StringVar(&config.Endpoint, "a", "localhost:8080", "server endpoint")
-	flag.IntVar(&config.ReportInterval, "r", 0, "report interval sec")
-	flag.IntVar(&config.PoolInterval, "p", 0, "metrics pool interval sec")
+	flag.StringVar(&config.Endpoint, "a", endpointDefault, "server endpoint")
+	flag.IntVar(&config.ReportInterval, "r", reportIntervalDefault, "report interval sec")
+	flag.IntVar(&config.PoolInterval, "p", poolIntervalDefault, "metrics pool interval sec")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -41,14 +42,6 @@ func NewConfig() AgentConfig {
 		if err == nil {
 			config.PoolInterval = interval
 		}
-	}
-
-	if config.PoolInterval == 0 {
-		config.PoolInterval = defaultPoolInterval
-	}
-
-	if config.ReportInterval == 0 {
-		config.ReportInterval = defaultReportInterval
 	}
 
 	return config

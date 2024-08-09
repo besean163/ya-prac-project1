@@ -1,46 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"ya-prac-project1/internal/handlers"
+	mock "ya-prac-project1/internal/handlers/mocks"
 	"ya-prac-project1/internal/logger"
-	"ya-prac-project1/internal/metrics"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type StorageMock struct {
-}
-
-func (mock *StorageMock) SetValue(t, name, value string) error {
-	return nil
-}
-
-func (mock *StorageMock) GetValue(t, name string) (string, error) {
-	return "20", nil
-}
-
-func (mock *StorageMock) GetMetrics() []*metrics.Metrics {
-	v := new(float64)
-	*v = 20
-	return []*metrics.Metrics{
-		{
-			ID:    "testname",
-			MType: "gauge",
-			Value: v,
-		},
-	}
-}
-
-func (mock StorageMock) GetRows() []string {
-	return []string{"testname: 20"}
-}
-
 func TestUpdateMetrics(t *testing.T) {
-	store := StorageMock{}
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+
 	h := handlers.New(&store, "")
 
 	tests := []struct {
@@ -121,4 +104,73 @@ func TestUpdateMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGzipCompression(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+
+	h := handlers.New(store)
+
+	valueResponse := "20"
+	t.Run("value", func(t *testing.T) {
+
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(valueResponse))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		req, _ := http.NewRequest(http.MethodGet, "/value/gauge/testname", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rr := httptest.NewRecorder()
+
+		h.Mount()
+		h.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		respBody := bytes.NewBuffer(nil)
+		zr, err := gzip.NewReader(rr.Body)
+		require.NoError(t, err)
+		zr.Read(respBody.Bytes())
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+		require.JSONEq(t, valueResponse, string(b))
+	})
+
+	allValuesResponse := "<!DOCTYPE html><html><head><title>Report</title></head><body><div>testname: 20</div></body></html>"
+	t.Run("all_values", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(allValuesResponse))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		req, _ := http.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rr := httptest.NewRecorder()
+
+		h.Mount()
+		h.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		respBody := bytes.NewBuffer(nil)
+		zr, err := gzip.NewReader(rr.Body)
+		require.NoError(t, err)
+		zr.Read(respBody.Bytes())
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+
+		require.Equal(t, allValuesResponse, string(b))
+	})
 }

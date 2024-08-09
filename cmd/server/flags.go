@@ -6,6 +6,13 @@ import (
 	"strconv"
 )
 
+const (
+	endpointDefault      = "localhost:8080"
+	storeIntervalDefault = 300
+	storeFileDefault     = "store_metrics"
+	restoreFlagDefault   = true
+)
+
 type ServerConfig struct {
 	Endpoint      string
 	StoreInterval int
@@ -20,11 +27,10 @@ func NewConfig() ServerConfig {
 	storeFileFlag := ""
 	restoreFlag := false
 	baseDNSFlag := ""
-	flag.StringVar(&endpointFlag, "a", "localhost:8080", "server endpoint")
-	flag.IntVar(&storeIntervalFlag, "i", 300, "store interval")
-	flag.StringVar(&storeFileFlag, "f", "", "store file")
-	flag.BoolVar(&restoreFlag, "r", true, "restore metrics")
-	flag.StringVar(&baseDNSFlag, "d", "", "base dns")
+	flag.StringVar(&endpointFlag, "a", endpointDefault, "server endpoint")
+	flag.IntVar(&storeIntervalFlag, "i", storeIntervalDefault, "store interval")
+	flag.StringVar(&storeFileFlag, "f", storeFileDefault, "store file")
+	flag.BoolVar(&restoreFlag, "r", restoreFlagDefault, "restore metrics")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
