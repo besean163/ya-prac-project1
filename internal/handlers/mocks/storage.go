@@ -6,6 +6,7 @@ package mock
 
 import (
 	reflect "reflect"
+	metrics "ya-prac-project1/internal/metrics"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -33,18 +34,18 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
-// GetRows mocks base method.
-func (m *MockStorage) GetRows() []string {
+// GetMetrics mocks base method.
+func (m *MockStorage) GetMetrics() []*metrics.Metrics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRows")
-	ret0, _ := ret[0].([]string)
+	ret := m.ctrl.Call(m, "GetMetrics")
+	ret0, _ := ret[0].([]*metrics.Metrics)
 	return ret0
 }
 
-// GetRows indicates an expected call of GetRows.
-func (mr *MockStorageMockRecorder) GetRows() *gomock.Call {
+// GetMetrics indicates an expected call of GetMetrics.
+func (mr *MockStorageMockRecorder) GetMetrics() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRows", reflect.TypeOf((*MockStorage)(nil).GetRows))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockStorage)(nil).GetMetrics))
 }
 
 // GetValue mocks base method.
@@ -60,6 +61,20 @@ func (m *MockStorage) GetValue(t, name string) (string, error) {
 func (mr *MockStorageMockRecorder) GetValue(t, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetValue", reflect.TypeOf((*MockStorage)(nil).GetValue), t, name)
+}
+
+// SetMetrics mocks base method.
+func (m *MockStorage) SetMetrics(metrics []metrics.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMetrics", metrics)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMetrics indicates an expected call of SetMetrics.
+func (mr *MockStorageMockRecorder) SetMetrics(metrics interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMetrics", reflect.TypeOf((*MockStorage)(nil).SetMetrics), metrics)
 }
 
 // SetValue mocks base method.
