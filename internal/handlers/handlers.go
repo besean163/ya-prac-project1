@@ -88,11 +88,11 @@ func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Reques
 		}
 
 		fmt.Println(metrics)
-		// err = s.storage.SetValue(metric.MType, metric.ID, metric.GetValue())
-		// if err != nil {
-		// 	http.Error(w, err.Error(), http.StatusNotFound)
-		// 	return
-		// }
+		err = s.storage.SetMetrics(metrics)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

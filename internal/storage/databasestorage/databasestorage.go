@@ -100,7 +100,10 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 		fmt.Println(row.Err())
 	}
 	var metric metrics.Metrics
-	row.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
+	err := row.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
+	if err != nil {
+		logger.Get().Debug("get metric scan error:" + err.Error())
+	}
 
 	if metric.ID == "" {
 		return nil
@@ -123,7 +126,7 @@ func prepareDB() {
     	name    varchar(255) PRIMARY KEY,
     	type    varchar(40),
     	value    double precision default null,
-    	delta    int default null
+    	delta    bigint default null
 	);`
 
 	database.Exec(sql)
@@ -157,6 +160,42 @@ func (s Storage) AddMetric(metric *metrics.Metrics) error {
 }
 
 func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
+	existMetrics := s.GetMetrics()
+
+	found := false
+	for _, metric := range metrics {
+		found = false
+		for _, eMetric := range existMetrics {
+			if metric.MType == eMetric.MType && metric.ID == eMetric.ID {
+				e := *eMetric
+				value := new(float64)
+				if metric.Value != nil {
+					*value = *metric.Value
+				}
+				delta := new(int64)
+				if metric.Delta != nil {
+					fmt.Println("here")
+					fmt.Println(*metric.Delta)
+					fmt.Println(*e.Delta)
+
+					*delta = *metric.Delta + *e.Delta
+				}
+				e.Value = value
+				e.Delta = delta
+				err := s.UpdateMetric(&e)
+				if err != nil {
+					fmt.Println(err)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			m := metric
+			s.AddMetric(&m)
+			existMetrics = append(existMetrics, &m)
+		}
+	}
 
 	return nil
 }

@@ -11,6 +11,7 @@ const (
 	storeIntervalDefault = 300
 	storeFileDefault     = "store_metrics"
 	restoreFlagDefault   = true
+	baseDSNDefault       = ""
 )
 
 type ServerConfig struct {
@@ -26,11 +27,12 @@ func NewConfig() ServerConfig {
 	storeIntervalFlag := 0
 	storeFileFlag := ""
 	restoreFlag := false
-	baseDNSFlag := ""
+	baseDSNFlag := ""
 	flag.StringVar(&endpointFlag, "a", endpointDefault, "server endpoint")
 	flag.IntVar(&storeIntervalFlag, "i", storeIntervalDefault, "store interval")
 	flag.StringVar(&storeFileFlag, "f", storeFileDefault, "store file")
 	flag.BoolVar(&restoreFlag, "r", restoreFlagDefault, "restore metrics")
+	flag.StringVar(&baseDSNFlag, "d", baseDSNDefault, "data base dsn")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -55,8 +57,8 @@ func NewConfig() ServerConfig {
 		}
 	}
 
-	if baseDNSEnv := os.Getenv("DATABASE_DSN"); baseDNSEnv != "" {
-		baseDNSFlag = baseDNSEnv
+	if baseDSNEnv := os.Getenv("DATABASE_DSN"); baseDSNEnv != "" {
+		baseDSNFlag = baseDSNEnv
 	}
 
 	return ServerConfig{
@@ -64,6 +66,6 @@ func NewConfig() ServerConfig {
 		StoreInterval: storeIntervalFlag,
 		StoreFile:     storeFileFlag,
 		Restore:       restoreFlag,
-		BaseDNS:       baseDNSFlag,
+		BaseDNS:       baseDSNFlag,
 	}
 }
