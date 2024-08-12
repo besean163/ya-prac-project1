@@ -39,15 +39,13 @@ func (s *RuntimeService) UpdateMetrics() {
 }
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
-	for _, metric := range s.storage.GetMetrics() {
-		makeUpdateRequest(*metric, serverEndpoint)
-	}
+	makeUpdateRequest(s.storage.GetMetrics(), serverEndpoint)
 }
 
-func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
+func makeUpdateRequest(metrics []*metrics.Metrics, serverEndpoint string) {
 	client := http.Client{}
 
-	b, err := json.Marshal(metric)
+	b, err := json.Marshal(metrics)
 	if err != nil {
 		log.Printf("encode error. Error: %s\n", err)
 		return
@@ -61,7 +59,7 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	}
 	gw.Close()
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), &buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/updates/", serverEndpoint), &buf)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
 		return
@@ -70,7 +68,12 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 
-	response, err := client.Do(req)
+	retry := getRetryFunc(3, 2)
+	var response *http.Response
+	for retry(err) {
+		response, err = client.Do(req)
+	}
+
 	if err != nil {
 		log.Printf("call error. Error: %s\n", err)
 		return
@@ -116,5 +119,27 @@ func getRuntimeMetrics() map[string]string {
 		"StackSys":      fmt.Sprint(stat.StackSys),
 		"HeapSys":       fmt.Sprint(stat.HeapSys),
 		"GCCPUFraction": fmt.Sprint(stat.GCCPUFraction),
+	}
+}
+
+func getRetryFunc(attempts, waitDelta int) func(err error) bool {
+	secDelta := 0
+	attempt := 0
+	return func(err error) bool {
+		attempt++
+
+		// первый запуск
+		if attempt == 1 && attempt <= attempts {
+			return true
+		}
+
+		if err != nil {
+			time.Sleep(time.Duration(1+secDelta) * time.Second)
+			secDelta += waitDelta
+			return attempt <= attempts
+		}
+
+		// если дошли сюда, то попытки закончились
+		return false
 	}
 }
