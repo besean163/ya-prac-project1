@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 
+	"github.com/jackc/pgerrcode"
+	pgx "github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
@@ -33,6 +36,7 @@ func (s *Storage) SetValue(metricType, name, value string) error {
 	}
 
 	metric := s.GetMetric(metricType, name)
+	fmt.Println("metric", metric)
 	if metric == nil {
 		metric = &metrics.Metrics{
 			MType: metricType,
@@ -62,7 +66,15 @@ func (s *Storage) GetValue(metricType, name string) (string, error) {
 
 func (s *Storage) GetMetrics() []*metrics.Metrics {
 	items := []*metrics.Metrics{}
-	rows, err := database.Query("SELECT type,name,value,delta FROM metrics")
+
+	retry := getRetryFunc(3, 2)
+
+	var err error
+	var rows *sql.Rows
+	for retry(err) {
+		rows, err = database.Query("SELECT type,name,value,delta FROM metrics")
+	}
+
 	if err != nil {
 		logger.Get().Info(
 			"get metrics error",
@@ -142,20 +154,33 @@ func checkWrongType(metricType string) error {
 }
 
 func (s Storage) UpdateMetric(metric *metrics.Metrics) error {
-	result, err := database.Exec("UPDATE metrics SET value = $1, delta = $2 WHERE type = $3 AND name = $4", metric.Value, metric.Delta, metric.MType, metric.ID)
+	retry := getRetryFunc(3, 2)
+
+	var err error
+	for retry(err) {
+		_, err = database.Exec("UPDATE metrics SET value = $1, delta = $2 WHERE type = $3 AND name = $4", metric.Value, metric.Delta, metric.MType, metric.ID)
+	}
+
 	if err != nil {
 		return err
 	}
-	fmt.Println(result.RowsAffected())
+
 	return nil
 }
 
 func (s Storage) AddMetric(metric *metrics.Metrics) error {
-	result, err := database.Exec("INSERT INTO metrics (type, name, value, delta) VALUES ($1,$2,$3,$4)", metric.MType, metric.ID, metric.Value, metric.Delta)
+
+	retry := getRetryFunc(3, 2)
+
+	var err error
+	for retry(err) {
+		_, err = database.Exec("INSERT INTO metrics (type, name, value, delta) VALUES ($1,$2,$3,$4)", metric.MType, metric.ID, metric.Value, metric.Delta)
+	}
+
 	if err != nil {
 		return err
 	}
-	fmt.Println(result.RowsAffected())
+
 	return nil
 }
 
@@ -198,4 +223,32 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 	}
 
 	return nil
+}
+
+func getRetryFunc(attempts, waitDelta int) func(err error) bool {
+	secDelta := 0
+	attempt := 0
+	return func(err error) bool {
+		attempt++
+
+		// первый запуск
+		if attempt == 1 && attempt <= attempts {
+			return true
+		}
+
+		// если ошибки нет то не нужно нового трая
+		if err == nil {
+			return false
+		}
+
+		pgError := pgx.PgError{}
+		if errors.Is(err, &pgError) && pgerrcode.IsConnectionException(pgError.Code) {
+			time.Sleep(time.Duration(1+secDelta) * time.Second)
+			secDelta += waitDelta
+			return attempt <= attempts
+		}
+
+		// если дошли сюда, то попытки закончились
+		return false
+	}
 }
