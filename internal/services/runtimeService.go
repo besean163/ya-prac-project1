@@ -73,12 +73,12 @@ func makeUpdateRequest(metrics []*metrics.Metrics, serverEndpoint string) {
 	for retry(err) {
 		response, err = client.Do(req)
 	}
+	defer response.Body.Close()
 
 	if err != nil {
 		log.Printf("call error. Error: %s\n", err)
 		return
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		log.Println("Error write metrics")
