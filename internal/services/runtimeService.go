@@ -72,8 +72,10 @@ func makeUpdateRequest(metrics []*metrics.Metrics, serverEndpoint string) {
 	var response *http.Response
 	for retry(err) {
 		response, err = client.Do(req)
+		if err == nil {
+			defer response.Body.Close()
+		}
 	}
-	defer response.Body.Close()
 
 	if err != nil {
 		log.Printf("call error. Error: %s\n", err)
