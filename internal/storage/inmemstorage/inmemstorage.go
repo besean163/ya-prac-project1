@@ -70,8 +70,12 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 	return nil
 }
 
-func (s *Storage) GetMetrics() []*metrics.Metrics {
-	return s.Metrics
+func (s *Storage) GetMetrics() []metrics.Metrics {
+	items := []metrics.Metrics{}
+	for _, m := range s.Metrics {
+		items = append(items, *m)
+	}
+	return items
 }
 
 func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {

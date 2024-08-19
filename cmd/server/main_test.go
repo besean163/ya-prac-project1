@@ -25,7 +25,7 @@ func TestUpdateMetrics(t *testing.T) {
 	*value = 20
 	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
-	store.EXPECT().GetMetrics().Return([]*metrics.Metrics{
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
 		{
 			MType: "gauge",
 			ID:    "testname",
@@ -33,7 +33,7 @@ func TestUpdateMetrics(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, "")
+	h := handlers.New(store, nil)
 
 	tests := []struct {
 		code       int
@@ -123,7 +123,7 @@ func TestGzipCompression(t *testing.T) {
 	*value = 20
 	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
-	store.EXPECT().GetMetrics().Return([]*metrics.Metrics{
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
 		{
 			MType: "gauge",
 			ID:    "testname",
@@ -131,7 +131,7 @@ func TestGzipCompression(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, "")
+	h := handlers.New(store, nil)
 
 	valueResponse := "20"
 	t.Run("value", func(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,20 +18,20 @@ import (
 type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
-	GetMetrics() []*metrics.Metrics
+	GetMetrics() []metrics.Metrics
 	SetMetrics(metrics []metrics.Metrics) error
 }
 
 type ServerHandler struct {
-	storage Storage
-	baseDNS string
-	handler *chi.Mux
+	storage  Storage
+	database *sql.DB
+	handler  *chi.Mux
 }
 
-func New(storage Storage, baseDNS string) *ServerHandler {
+func New(storage Storage, db *sql.DB) *ServerHandler {
 	s := &ServerHandler{}
 	s.storage = storage
-	s.baseDNS = baseDNS
+	s.database = db
 	return s
 }
 
@@ -150,15 +151,15 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
-	if s.baseDNS == "" {
-		return
+	var err error
+	if s.database == nil {
+		err = errors.New("no database connection")
 	}
-	db, err := sql.Open("pgx", s.baseDNS)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	if err == nil {
+		err = s.database.PingContext(context.Background())
 	}
-	err = db.PingContext(context.Background())
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

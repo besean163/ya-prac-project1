@@ -19,9 +19,13 @@ var database *sql.DB
 type Storage struct {
 }
 
-func NewStorage(dsn string) (*Storage, error) {
+func NewStorage(db *sql.DB) (*Storage, error) {
+	var err error
+	if db == nil {
+		err = errors.New("no database connection")
 
-	if err := initDB(dsn); err != nil {
+	}
+	if err != nil {
 		return nil, err
 	}
 	prepareDB()
@@ -64,8 +68,8 @@ func (s *Storage) GetValue(metricType, name string) (string, error) {
 	return metric.GetValue(), nil
 }
 
-func (s *Storage) GetMetrics() []*metrics.Metrics {
-	items := []*metrics.Metrics{}
+func (s *Storage) GetMetrics() []metrics.Metrics {
+	items := []metrics.Metrics{}
 
 	retry := getRetryFunc(3, 2)
 
@@ -92,7 +96,7 @@ func (s *Storage) GetMetrics() []*metrics.Metrics {
 				zap.String("error", err.Error()),
 			)
 		}
-		items = append(items, &metric)
+		items = append(items, metric)
 	}
 
 	if rows.Err() != nil {
@@ -122,15 +126,6 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 	}
 
 	return &metric
-}
-
-func initDB(dsn string) error {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("base init fail: %s", err)
-	}
-	database = db
-	return nil
 }
 
 func prepareDB() {
@@ -192,14 +187,13 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 		found = false
 		for _, eMetric := range existMetrics {
 			if metric.MType == eMetric.MType && metric.ID == eMetric.ID {
-				e := *eMetric
+				e := eMetric
 				value := new(float64)
 				if metric.Value != nil {
 					*value = *metric.Value
 				}
 				delta := new(int64)
 				if metric.Delta != nil {
-					fmt.Println("here")
 					fmt.Println(*metric.Delta)
 					fmt.Println(*e.Delta)
 
@@ -218,7 +212,7 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 		if !found {
 			m := metric
 			s.AddMetric(&m)
-			existMetrics = append(existMetrics, &m)
+			existMetrics = append(existMetrics, m)
 		}
 	}
 

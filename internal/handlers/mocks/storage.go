@@ -35,10 +35,10 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // GetMetrics mocks base method.
-func (m *MockStorage) GetMetrics() []*metrics.Metrics {
+func (m *MockStorage) GetMetrics() []metrics.Metrics {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetrics")
-	ret0, _ := ret[0].([]*metrics.Metrics)
+	ret0, _ := ret[0].([]metrics.Metrics)
 	return ret0
 }
 

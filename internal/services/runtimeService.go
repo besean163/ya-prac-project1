@@ -17,7 +17,7 @@ import (
 type Storage interface {
 	SetValue(metricType, name, value string) error
 	GetValue(metricType, name string) (string, error)
-	GetMetrics() []*metrics.Metrics
+	GetMetrics() []metrics.Metrics
 }
 
 type RuntimeService struct {
@@ -43,7 +43,7 @@ func (s *RuntimeService) SendMetrics(serverEndpoint string) {
 	makeUpdateRequest(s.storage.GetMetrics(), serverEndpoint)
 }
 
-func makeUpdateRequest(metrics []*metrics.Metrics, serverEndpoint string) {
+func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string) {
 	client := http.Client{}
 
 	b, err := json.Marshal(metrics)
