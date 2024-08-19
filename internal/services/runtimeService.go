@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 	"ya-prac-project1/internal/metrics"
 )
@@ -68,7 +69,7 @@ func makeUpdateRequest(metrics []*metrics.Metrics, serverEndpoint string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 
-	retry := getRetryFunc(3, 2)
+	retry := getRetryFunc(3, 1, 2)
 	var response *http.Response
 	for retry(err) {
 		response, err = client.Do(req)
@@ -124,8 +125,9 @@ func getRuntimeMetrics() map[string]string {
 	}
 }
 
-func getRetryFunc(attempts, waitDelta int) func(err error) bool {
-	secDelta := 0
+// возвращает функцию которая следит за количеством повторов и определяет их надобность
+// работает за счет замыкания, т.е. передаем в параметры создающей функции количество попыток и каждую следующую заддержку и эти параметры используем при каждом вызове функции
+func getRetryFunc(attempts, secDelta, waitDelta int) func(err error) bool {
 	attempt := 0
 	return func(err error) bool {
 		attempt++
@@ -135,8 +137,12 @@ func getRetryFunc(attempts, waitDelta int) func(err error) bool {
 			return true
 		}
 
-		if err != nil {
-			time.Sleep(time.Duration(1+secDelta) * time.Second)
+		if err == nil {
+			return false
+		}
+
+		if strings.Contains(err.Error(), "connection refused") {
+			time.Sleep(time.Duration(secDelta) * time.Second)
 			secDelta += waitDelta
 			return attempt <= attempts
 		}
