@@ -14,6 +14,12 @@ import (
 	"ya-prac-project1/internal/metrics"
 )
 
+const (
+	retryAttempts    = 3
+	waitSec          = 1
+	waitSecIncrement = 2
+)
+
 type Storage interface {
 	SetValue(metricType, name, value string) error
 	GetValue(metricType, name string) (string, error)
@@ -69,7 +75,7 @@ func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 
-	retry := getRetryFunc(3, 1, 2)
+	retry := getRetryFunc(retryAttempts, waitSec, waitSecIncrement)
 	var response *http.Response
 	for retry(err) {
 		response, err = client.Do(req)
