@@ -215,7 +215,6 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 				e.Value = value
 				e.Delta = delta
 				_, err := tx.Exec(getUpdateMetricSQL(), e.Value, e.Delta, e.MType, e.ID)
-				// err := s.UpdateMetric(&e)
 				if err != nil {
 					logger.Get().Debug("tx update metric error", zap.String("error", err.Error()))
 					tx.Rollback()
@@ -233,7 +232,6 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 				tx.Rollback()
 				return err
 			}
-			// s.AddMetric(&m)
 			existMetrics = append(existMetrics, m)
 		}
 	}
