@@ -23,12 +23,15 @@ func NewStorage(db *sql.DB) (*Storage, error) {
 	var err error
 	if db == nil {
 		err = errors.New("no database connection")
-
 	}
 	if err != nil {
 		return nil, err
 	}
-	prepareDB()
+	database = db
+	err = prepareDB()
+	if err != nil {
+		return nil, err
+	}
 
 	return &Storage{}, nil
 }
@@ -128,7 +131,7 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 	return &metric
 }
 
-func prepareDB() {
+func prepareDB() error {
 	sql := `CREATE TABLE IF NOT EXISTS metrics(
     	name    varchar(255) PRIMARY KEY,
     	type    varchar(40),
@@ -136,7 +139,11 @@ func prepareDB() {
     	delta    bigint default null
 	);`
 
-	database.Exec(sql)
+	_, err := database.Exec(sql)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func checkWrongType(metricType string) error {
