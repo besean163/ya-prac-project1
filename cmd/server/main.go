@@ -41,12 +41,12 @@ func run(config ServerConfig) error {
 		cancel()
 	}()
 
-	store, err := getStorage(ctx, config, getSqlConnect(config))
+	store, err := getStorage(ctx, config, getSQLConnect(config))
 	if err != nil {
 		return err
 	}
 
-	h := handlers.New(store, getSqlConnect(config))
+	h := handlers.New(store, getSQLConnect(config))
 	h.Mount()
 
 	srv := &http.Server{
@@ -92,7 +92,7 @@ func getStorage(ctx context.Context, config ServerConfig, db *sql.DB) (handlers.
 	return store, nil
 }
 
-func getSqlConnect(config ServerConfig) *sql.DB {
+func getSQLConnect(config ServerConfig) *sql.DB {
 	if config.BaseDNS == "" {
 		return nil
 	}

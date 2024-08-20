@@ -13,9 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-var database *sql.DB
-
 type Storage struct {
+	DB *sql.DB
 }
 
 func NewStorage(db *sql.DB) (*Storage, error) {
@@ -26,13 +25,17 @@ func NewStorage(db *sql.DB) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	database = db
-	err = prepareDB()
+
+	storage := Storage{
+		DB: db,
+	}
+
+	err = storage.prepareDB()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Storage{}, nil
+	return &storage, nil
 }
 
 func (s *Storage) SetValue(metricType, name, value string) error {
@@ -77,7 +80,7 @@ func (s *Storage) GetMetrics() []metrics.Metrics {
 	var err error
 	var rows *sql.Rows
 	for retry(err) {
-		rows, err = database.Query("SELECT type,name,value,delta FROM metrics")
+		rows, err = s.DB.Query("SELECT type,name,value,delta FROM metrics")
 	}
 
 	if err != nil {
@@ -111,7 +114,7 @@ func (s *Storage) GetMetrics() []metrics.Metrics {
 }
 
 func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
-	row := database.QueryRow("SELECT type,name,value,delta FROM metrics WHERE type = $1 AND name = $2", metricType, name)
+	row := s.DB.QueryRow("SELECT type,name,value,delta FROM metrics WHERE type = $1 AND name = $2", metricType, name)
 
 	if row.Err() != nil {
 		logger.Get().Debug("get metric error", zap.String("error", row.Err().Error()))
@@ -129,7 +132,7 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 	return &metric
 }
 
-func prepareDB() error {
+func (s *Storage) prepareDB() error {
 	sql := `CREATE TABLE IF NOT EXISTS metrics(
     	name    varchar(255) PRIMARY KEY,
     	type    varchar(40),
@@ -137,7 +140,7 @@ func prepareDB() error {
     	delta    bigint default null
 	);`
 
-	_, err := database.Exec(sql)
+	_, err := s.DB.Exec(sql)
 	if err != nil {
 		return err
 	}
@@ -158,7 +161,7 @@ func (s Storage) UpdateMetric(metric *metrics.Metrics) error {
 
 	var err error
 	for retry(err) {
-		_, err = database.Exec("UPDATE metrics SET value = $1, delta = $2 WHERE type = $3 AND name = $4", metric.Value, metric.Delta, metric.MType, metric.ID)
+		_, err = s.DB.Exec(getUpdateMetricSQL(), metric.Value, metric.Delta, metric.MType, metric.ID)
 	}
 
 	if err != nil {
@@ -174,7 +177,7 @@ func (s Storage) AddMetric(metric *metrics.Metrics) error {
 
 	var err error
 	for retry(err) {
-		_, err = database.Exec("INSERT INTO metrics (type, name, value, delta) VALUES ($1,$2,$3,$4)", metric.MType, metric.ID, metric.Value, metric.Delta)
+		_, err = s.DB.Exec(getInsertMetricSQL(), metric.MType, metric.ID, metric.Value, metric.Delta)
 	}
 
 	if err != nil {
@@ -186,6 +189,14 @@ func (s Storage) AddMetric(metric *metrics.Metrics) error {
 
 func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 	existMetrics := s.GetMetrics()
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
 
 	found := false
 	for _, metric := range metrics {
@@ -203,9 +214,12 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 				}
 				e.Value = value
 				e.Delta = delta
-				err := s.UpdateMetric(&e)
+				_, err := tx.Exec(getUpdateMetricSQL(), e.Value, e.Delta, e.MType, e.ID)
+				// err := s.UpdateMetric(&e)
 				if err != nil {
-					logger.Get().Debug("update metric error", zap.String("error", err.Error()))
+					logger.Get().Debug("tx update metric error", zap.String("error", err.Error()))
+					tx.Rollback()
+					return err
 				}
 				found = true
 				break
@@ -213,12 +227,18 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 		}
 		if !found {
 			m := metric
-			s.AddMetric(&m)
+			_, err := tx.Exec(getInsertMetricSQL(), m.MType, m.ID, m.Value, m.Delta)
+			if err != nil {
+				logger.Get().Debug("tx insert metric error", zap.String("error", err.Error()))
+				tx.Rollback()
+				return err
+			}
+			// s.AddMetric(&m)
 			existMetrics = append(existMetrics, m)
 		}
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func getRetryFunc(attempts, waitDelta int) func(err error) bool {
@@ -247,4 +267,13 @@ func getRetryFunc(attempts, waitDelta int) func(err error) bool {
 		// если дошли сюда, то попытки закончились
 		return false
 	}
+
+}
+
+func getUpdateMetricSQL() string {
+	return "UPDATE metrics SET value = $1, delta = $2 WHERE type = $3 AND name = $4"
+}
+
+func getInsertMetricSQL() string {
+	return "INSERT INTO metrics (type, name, value, delta) VALUES ($1,$2,$3,$4)"
 }
