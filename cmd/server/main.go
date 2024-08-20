@@ -46,7 +46,7 @@ func run(config ServerConfig) error {
 		return err
 	}
 
-	h := handlers.New(store, getSQLConnect(config))
+	h := handlers.New(store, getSQLConnect(config), config.HashKey)
 	h.Mount()
 
 	srv := &http.Server{

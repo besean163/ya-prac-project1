@@ -21,6 +21,6 @@ func main() {
 
 	for {
 		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
-		service.SendMetrics(c.Endpoint)
+		service.SendMetrics(c.Endpoint, c.HashKey)
 	}
 }

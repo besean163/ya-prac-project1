@@ -3,6 +3,9 @@ package services
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -45,11 +48,11 @@ func (s *RuntimeService) UpdateMetrics() {
 	s.storage.SetValue("counter", "PollCount", fmt.Sprint(1))
 }
 
-func (s *RuntimeService) SendMetrics(serverEndpoint string) {
-	makeUpdateRequest(s.storage.GetMetrics(), serverEndpoint)
+func (s *RuntimeService) SendMetrics(serverEndpoint string, key string) {
+	makeUpdateRequest(s.storage.GetMetrics(), serverEndpoint, key)
 }
 
-func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string) {
+func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string, key string) {
 	client := http.Client{}
 
 	b, err := json.Marshal(metrics)
@@ -72,6 +75,12 @@ func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string) {
 		return
 	}
 
+	if key != "" {
+		h := hmac.New(sha256.New, []byte(key))
+		h.Write(buf.Bytes())
+		sign := hex.EncodeToString(h.Sum(nil))
+		req.Header.Set("HashSHA256", sign)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 

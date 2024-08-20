@@ -26,12 +26,14 @@ type ServerHandler struct {
 	storage  Storage
 	database *sql.DB
 	handler  *chi.Mux
+	hashKey  string
 }
 
-func New(storage Storage, db *sql.DB) *ServerHandler {
+func New(storage Storage, db *sql.DB, hashKey string) *ServerHandler {
 	s := &ServerHandler{}
 	s.storage = storage
 	s.database = db
+	s.hashKey = hashKey
 	return s
 }
 
@@ -186,7 +188,14 @@ func (s *ServerHandler) Mount() {
 }
 
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logMiddleware(zipMiddleware(s.handler)).ServeHTTP(w, r)
+
+	h := logMiddleware(zipMiddleware(s.handler))
+
+	if s.hashKey != "" {
+		h = hashKeyMiddleware(h, s.hashKey)
+	}
+
+	h.ServeHTTP(w, r)
 }
 
 func hasJSONHeader(r *http.Request) bool {

@@ -10,12 +10,14 @@ const (
 	endpointDefault       = "localhost:8080"
 	reportIntervalDefault = 2
 	poolIntervalDefault   = 1
+	hashKeyDefault        = ""
 )
 
 type AgentConfig struct {
 	Endpoint       string
 	ReportInterval int
 	PoolInterval   int
+	HashKey        string
 }
 
 func NewConfig() AgentConfig {
@@ -24,6 +26,7 @@ func NewConfig() AgentConfig {
 	flag.StringVar(&config.Endpoint, "a", endpointDefault, "server endpoint")
 	flag.IntVar(&config.ReportInterval, "r", reportIntervalDefault, "report interval sec")
 	flag.IntVar(&config.PoolInterval, "p", poolIntervalDefault, "metrics pool interval sec")
+	flag.StringVar(&config.HashKey, "k", hashKeyDefault, "hash key")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -42,6 +45,10 @@ func NewConfig() AgentConfig {
 		if err == nil {
 			config.PoolInterval = interval
 		}
+	}
+
+	if hashKeyEnv := os.Getenv("KEY"); hashKeyEnv != "" {
+		config.HashKey = hashKeyEnv
 	}
 
 	return config
