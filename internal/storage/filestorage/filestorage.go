@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 	"ya-prac-project1/internal/logger"
@@ -48,7 +47,6 @@ func (s *Storage) restore() error {
 		if !buf.Scan() {
 			break
 		}
-		fmt.Println(string(buf.Bytes()))
 		data := buf.Bytes()
 		item := metrics.Metrics{}
 		err := json.Unmarshal(data, &item)

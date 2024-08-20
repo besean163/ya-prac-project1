@@ -3,7 +3,6 @@ package databasestorage
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
@@ -43,7 +42,6 @@ func (s *Storage) SetValue(metricType, name, value string) error {
 	}
 
 	metric := s.GetMetric(metricType, name)
-	fmt.Println("metric", metric)
 	if metric == nil {
 		metric = &metrics.Metrics{
 			MType: metricType,
@@ -116,7 +114,7 @@ func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
 	row := database.QueryRow("SELECT type,name,value,delta FROM metrics WHERE type = $1 AND name = $2", metricType, name)
 
 	if row.Err() != nil {
-		fmt.Println(row.Err())
+		logger.Get().Debug("get metric error", zap.String("error", row.Err().Error()))
 	}
 	var metric metrics.Metrics
 	err := row.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
@@ -201,16 +199,13 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 				}
 				delta := new(int64)
 				if metric.Delta != nil {
-					fmt.Println(*metric.Delta)
-					fmt.Println(*e.Delta)
-
 					*delta = *metric.Delta + *e.Delta
 				}
 				e.Value = value
 				e.Delta = delta
 				err := s.UpdateMetric(&e)
 				if err != nil {
-					fmt.Println(err)
+					logger.Get().Debug("update metric error", zap.String("error", err.Error()))
 				}
 				found = true
 				break

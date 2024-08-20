@@ -88,7 +88,6 @@ func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Reques
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		fmt.Println(metrics)
 		err = s.storage.SetMetrics(metrics)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -130,7 +129,6 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		if mType != "" && mName != "" {
 			v, err := s.storage.GetValue(mType, mName)
 			if err != nil {
-				fmt.Println("here")
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
