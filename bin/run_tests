@@ -52,6 +52,11 @@ function run_test_iter_13() {
     metricstest -test.v -test.run=^TestIteration13$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -server-port=8080 -source-path=.
 }
 
+function run_test_iter_14() {
+	metricstest -test.v -test.run=^TestIteration14$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -key="some_key" -server-port=8080 -source-path=.
+}
+
+
 function run_all() {
 	run_test_iter_1
     run_test_iter_2
@@ -66,6 +71,7 @@ function run_all() {
     run_test_iter_11
     run_test_iter_12
     run_test_iter_13
+    run_test_iter_14
 }
 
 case $1 in
@@ -82,6 +88,7 @@ case $1 in
 	11) run_test_iter_11;;
 	12) run_test_iter_12;;
 	13) run_test_iter_13;;
+	14) run_test_iter_14;;
     all) run_all;;
     *) echo "no such test";;
 esac

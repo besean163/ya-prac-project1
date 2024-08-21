@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -74,17 +75,20 @@ func zipMiddleware(h http.Handler) http.Handler {
 
 func hashKeyMiddleware(h http.Handler, key string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqKey := r.Header.Get("HashSHA256")
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			logger.Get().Debug("body read error", zap.String("error", err.Error()))
+		var bodyBytes []byte
+		if r.Body != nil {
+			bodyBytes, _ = io.ReadAll(r.Body)
 		}
 
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		reqKey := r.Header.Get("HashSHA256")
+
 		hash := hmac.New(sha256.New, []byte(key))
-		hash.Write(body)
+		hash.Write(bodyBytes)
 		hashKey := hex.EncodeToString(hash.Sum(nil))
 
-		if reqKey != hashKey {
+		if reqKey != "" && reqKey != hashKey {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
