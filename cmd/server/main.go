@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,9 +10,12 @@ import (
 	"os/signal"
 	"syscall"
 	"ya-prac-project1/internal/handlers"
-	"ya-prac-project1/internal/inmem"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/storage/databasestorage"
+	"ya-prac-project1/internal/storage/filestorage"
+	"ya-prac-project1/internal/storage/inmemstorage"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -29,14 +33,6 @@ func run(config ServerConfig) error {
 		return err
 	}
 
-	store, err := inmem.NewStorage(config.StoreFile, config.Restore, config.StoreInterval)
-	if err != nil {
-		return err
-	}
-
-	h := handlers.New(store)
-	h.Mount()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		s := make(chan os.Signal, 1)
@@ -44,6 +40,14 @@ func run(config ServerConfig) error {
 		<-s
 		cancel()
 	}()
+
+	store, err := getStorage(ctx, config, getSQLConnect(config))
+	if err != nil {
+		return err
+	}
+
+	h := handlers.New(store, getSQLConnect(config))
+	h.Mount()
 
 	srv := &http.Server{
 		Addr:    config.Endpoint,
@@ -62,9 +66,6 @@ func run(config ServerConfig) error {
 
 	g.Go(func() error {
 		<-gCtx.Done()
-		// делаем итоговый дамп
-		store.Dump()
-
 		if err = srv.Shutdown(context.Background()); err != nil {
 			fmt.Printf("Start server on: %s\n", config.Endpoint)
 			return err
@@ -78,4 +79,28 @@ func run(config ServerConfig) error {
 	}
 
 	return nil
+}
+
+func getStorage(ctx context.Context, config ServerConfig, db *sql.DB) (handlers.Storage, error) {
+	if config.BaseDNS != "" {
+		return databasestorage.NewStorage(db)
+	} else if config.StoreFile != "" {
+		return filestorage.NewStorage(ctx, config.StoreFile, config.Restore, int64(config.StoreInterval))
+	}
+
+	store := inmemstorage.NewStorage()
+	return store, nil
+}
+
+func getSQLConnect(config ServerConfig) *sql.DB {
+	if config.BaseDNS == "" {
+		return nil
+	}
+	db, err := sql.Open("pgx", config.BaseDNS)
+	if err != nil {
+		logger.Get().Debug("can't connect base.", zap.String("Error", err.Error()))
+		return nil
+	}
+
+	return db
 }

@@ -26,3 +26,5 @@ vendor/
 
 some
 *store_metrics
+cmd/test
+

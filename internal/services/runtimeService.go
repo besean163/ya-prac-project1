@@ -9,8 +9,15 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 	"ya-prac-project1/internal/metrics"
+)
+
+const (
+	retryAttempts    = 3
+	waitSec          = 1
+	waitSecIncrement = 2
 )
 
 type Storage interface {
@@ -39,15 +46,13 @@ func (s *RuntimeService) UpdateMetrics() {
 }
 
 func (s *RuntimeService) SendMetrics(serverEndpoint string) {
-	for _, metric := range s.storage.GetMetrics() {
-		makeUpdateRequest(metric, serverEndpoint)
-	}
+	makeUpdateRequest(s.storage.GetMetrics(), serverEndpoint)
 }
 
-func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
+func makeUpdateRequest(metrics []metrics.Metrics, serverEndpoint string) {
 	client := http.Client{}
 
-	b, err := json.Marshal(metric)
+	b, err := json.Marshal(metrics)
 	if err != nil {
 		log.Printf("encode error. Error: %s\n", err)
 		return
@@ -61,7 +66,7 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	}
 	gw.Close()
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/update/", serverEndpoint), &buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/updates/", serverEndpoint), &buf)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
 		return
@@ -70,12 +75,19 @@ func makeUpdateRequest(metric metrics.Metrics, serverEndpoint string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 
-	response, err := client.Do(req)
+	retry := getRetryFunc(retryAttempts, waitSec, waitSecIncrement)
+	var response *http.Response
+	for retry(err) {
+		response, err = client.Do(req)
+		if err == nil {
+			defer response.Body.Close()
+		}
+	}
+
 	if err != nil {
 		log.Printf("call error. Error: %s\n", err)
 		return
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		log.Println("Error write metrics")
@@ -116,5 +128,32 @@ func getRuntimeMetrics() map[string]string {
 		"StackSys":      fmt.Sprint(stat.StackSys),
 		"HeapSys":       fmt.Sprint(stat.HeapSys),
 		"GCCPUFraction": fmt.Sprint(stat.GCCPUFraction),
+	}
+}
+
+// возвращает функцию которая следит за количеством повторов и определяет их надобность
+// работает за счет замыкания, т.е. передаем в параметры создающей функции количество попыток и каждую следующую заддержку и эти параметры используем при каждом вызове функции
+func getRetryFunc(attempts, secDelta, waitDelta int) func(err error) bool {
+	attempt := 0
+	return func(err error) bool {
+		attempt++
+
+		// первый запуск
+		if attempt == 1 && attempt <= attempts {
+			return true
+		}
+
+		if err == nil {
+			return false
+		}
+
+		if strings.Contains(err.Error(), "connection refused") {
+			time.Sleep(time.Duration(secDelta) * time.Second)
+			secDelta += waitDelta
+			return attempt <= attempts
+		}
+
+		// если дошли сюда, то попытки закончились
+		return false
 	}
 }

@@ -31,6 +31,9 @@ func (m *Metrics) SetValue(value string) error {
 			return err
 		}
 		delta := int64(i)
+		if m.Delta != nil {
+			delta = delta + *m.Delta
+		}
 		m.Delta = &delta
 	}
 	return nil

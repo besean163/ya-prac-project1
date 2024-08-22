@@ -1,0 +1,87 @@
+#!/usr/bin/bash
+
+function run_test_iter_1() {
+	metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
+}
+
+function run_test_iter_2() {
+	metricstest -test.v -test.run=^TestIteration2[AB]$ -agent-binary-path=cmd/agent/agent -source-path=.
+}
+
+function run_test_iter_3() {
+	metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
+}
+
+function run_test_iter_4() {
+    metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8081 -source-path=.
+}
+
+function run_test_iter_5() {
+	metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8081 -source-path=.
+}
+
+function run_test_iter_6() {
+	metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8080 -source-path=.
+}
+
+function run_test_iter_7() {
+	metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=:8080 -source-path=.
+}
+
+function run_test_iter_8() {
+	metricstest -test.v -test.run=^TestIteration8$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8080 -source-path=.
+}
+
+function run_test_iter_9() {
+	metricstest -test.v -test.run=^TestIteration9$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=some -server-port=8080 -source-path=.
+}
+
+function run_test_iter_10() {
+	metricstest -test.v -test.run=^TestIteration10[AB]$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -server-port=8080 -source-path=.
+}
+
+function run_test_iter_11() {
+	metricstest -test.v -test.run=^TestIteration11$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -server-port=8080 -source-path=.
+}
+
+function run_test_iter_12() {
+    metricstest -test.v -test.run=^TestIteration12$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -server-port=8080 -source-path=.
+}
+
+function run_test_iter_13() {
+    metricstest -test.v -test.run=^TestIteration13$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -database-dsn='postgres://metrics:metrics@localhost:5432/metrics?sslmode=disable' -server-port=8080 -source-path=.
+}
+
+function run_all() {
+	run_test_iter_1
+    run_test_iter_2
+    run_test_iter_3
+    run_test_iter_4
+    run_test_iter_5
+    run_test_iter_6
+    run_test_iter_7
+    run_test_iter_8
+    run_test_iter_9
+    run_test_iter_10
+    run_test_iter_11
+    run_test_iter_12
+    run_test_iter_13
+}
+
+case $1 in
+	1) run_test_iter_1;;
+	2) run_test_iter_2;;
+	3) run_test_iter_3;;
+	4) run_test_iter_4;;
+	5) run_test_iter_5;;
+	6) run_test_iter_6;;
+	7) run_test_iter_7;;
+	8) run_test_iter_8;;
+	9) run_test_iter_9;;
+	10) run_test_iter_10;;
+	11) run_test_iter_11;;
+	12) run_test_iter_12;;
+	13) run_test_iter_13;;
+    all) run_all;;
+    *) echo "no such test";;
+esac

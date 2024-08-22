@@ -1,29 +1,37 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"ya-prac-project1/internal/metrics"
 
 	"github.com/go-chi/chi/v5"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Storage interface {
 	SetValue(t, name, value string) error
 	GetValue(t, name string) (string, error)
-	GetRows() []string
+	GetMetrics() []metrics.Metrics
+	SetMetrics(metrics []metrics.Metrics) error
 }
 
 type ServerHandler struct {
-	storage Storage
-	handler *chi.Mux
+	storage  Storage
+	database *sql.DB
+	handler  *chi.Mux
 }
 
-func New(storage Storage) *ServerHandler {
+func New(storage Storage, db *sql.DB) *ServerHandler {
 	s := &ServerHandler{}
 	s.storage = storage
+	s.database = db
 	return s
 }
 
@@ -54,6 +62,29 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		mValue := chi.URLParam(r, "metric_value")
 
 		err := s.storage.SetValue(mType, mName, mValue)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Request) {
+
+	if hasJSONHeader(r) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		metrics := []metrics.Metrics{}
+		if err := json.Unmarshal(body, &metrics); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		err = s.storage.SetMetrics(metrics)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -94,15 +125,38 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		if mType != "" && mName != "" {
 			v, err := s.storage.GetValue(mType, mName)
 			if err != nil {
-				fmt.Println("here")
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
 			w.Write([]byte(v))
 		} else {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(getMetricPage(s.storage.GetRows())))
+
+			metrics := s.storage.GetMetrics()
+			rows := make([]string, 0)
+			for _, metric := range metrics {
+				row := fmt.Sprintf("%s: %s", metric.ID, metric.GetValue())
+				rows = append(rows, row)
+
+			}
+			w.Write([]byte(getMetricPage(rows)))
 		}
+	}
+}
+
+func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
+	var err error
+	if s.database == nil {
+		err = errors.New("no database connection")
+	}
+
+	if err == nil {
+		err = s.database.PingContext(context.Background())
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -120,11 +174,13 @@ func getMetricPage(rows []string) string {
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
+		r.Get("/ping", s.Ping)
 		r.Get("/", s.GetMetrics)
 		r.Get("/value/{metric_type}/{metric_name}", s.GetMetrics)
 		r.Post("/update/{metric_type}/{metric_name}/{metric_value}", s.UpdateMetrics)
 		r.Post("/update/", s.UpdateMetrics)
 		r.Post("/value/", s.GetMetrics)
+		r.Post("/updates/", s.UpdateBatchMetrics)
 	})
 	s.handler = router
 }

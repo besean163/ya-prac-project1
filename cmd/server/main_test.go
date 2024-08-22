@@ -10,6 +10,7 @@ import (
 	"ya-prac-project1/internal/handlers"
 	mock "ya-prac-project1/internal/handlers/mocks"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/metrics"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -20,11 +21,19 @@ func TestUpdateMetrics(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := mock.NewMockStorage(ctrl)
 
+	value := new(float64)
+	*value = 20
 	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
-	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
+		{
+			MType: "gauge",
+			ID:    "testname",
+			Value: value,
+		},
+	}).AnyTimes()
 
-	h := handlers.New(store)
+	h := handlers.New(store, nil)
 
 	tests := []struct {
 		code       int
@@ -110,11 +119,19 @@ func TestGzipCompression(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := mock.NewMockStorage(ctrl)
 
+	value := new(float64)
+	*value = 20
 	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
-	store.EXPECT().GetRows().Return([]string{"testname: 20"}).AnyTimes()
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
+		{
+			MType: "gauge",
+			ID:    "testname",
+			Value: value,
+		},
+	}).AnyTimes()
 
-	h := handlers.New(store)
+	h := handlers.New(store, nil)
 
 	valueResponse := "20"
 	t.Run("value", func(t *testing.T) {
