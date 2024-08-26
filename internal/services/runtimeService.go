@@ -42,7 +42,7 @@ func NewRuntimeService(storage Storage) RuntimeService {
 	return RuntimeService{storage: storage}
 }
 
-func (service RuntimeService) Run(errGroup *errgroup.Group, poolInterval int) {
+func (s RuntimeService) Run(errGroup *errgroup.Group, poolInterval int) {
 
 	metricsCh := make(chan metrics.Metrics, 10)
 
@@ -57,7 +57,7 @@ func (service RuntimeService) Run(errGroup *errgroup.Group, poolInterval int) {
 	errGroup.Go(func() error {
 		for {
 			metric := <-metricsCh
-			err := service.storage.SetMetric(&metric)
+			err := s.storage.SetMetric(&metric)
 			if err != nil {
 				return err
 			}
