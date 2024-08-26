@@ -65,6 +65,14 @@ func worker(requestCh chan *http.Request) {
 		var response *http.Response
 		for retry(err) {
 			response, err = client.Do(req)
+			if response != nil {
+				if response.StatusCode != http.StatusOK {
+					log.Println("Error write metrics")
+					log.Println("Path:", req.URL.Path)
+					log.Println("Code:", response.StatusCode)
+				}
+			}
+			response.Body.Close()
 		}
 
 		if err != nil {
@@ -72,12 +80,6 @@ func worker(requestCh chan *http.Request) {
 			continue
 		}
 
-		if response.StatusCode != http.StatusOK {
-			log.Println("Error write metrics")
-			log.Println("Path:", req.URL.Path)
-			log.Println("Code:", response.StatusCode)
-		}
-		response.Body.Close()
 	}
 }
 
