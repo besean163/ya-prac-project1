@@ -87,3 +87,17 @@ func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
 	}
 	return nil
 }
+
+func (s *Storage) SetMetric(metric *metrics.Metrics) error {
+	eMetric := s.GetMetric(metric.MType, metric.ID)
+	if eMetric == nil {
+		s.Metrics = append(s.Metrics, metric)
+		return nil
+	}
+
+	err := eMetric.SetValue(metric.GetValue())
+	if err != nil {
+		return err
+	}
+	return nil
+}
