@@ -22,7 +22,7 @@ import (
 func main() {
 	config := NewConfig()
 	if err := run(config); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	os.Exit(0)
 }
@@ -46,7 +46,7 @@ func run(config ServerConfig) error {
 		return err
 	}
 
-	h := handlers.New(store, getSQLConnect(config))
+	h := handlers.New(store, getSQLConnect(config), config.HashKey)
 	h.Mount()
 
 	srv := &http.Server{

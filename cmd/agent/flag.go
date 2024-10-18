@@ -10,12 +10,16 @@ const (
 	endpointDefault       = "localhost:8080"
 	reportIntervalDefault = 2
 	poolIntervalDefault   = 1
+	hashKeyDefault        = ""
+	rateLimitDefault      = 1
 )
 
 type AgentConfig struct {
 	Endpoint       string
 	ReportInterval int
 	PoolInterval   int
+	HashKey        string
+	RateLimit      int
 }
 
 func NewConfig() AgentConfig {
@@ -24,6 +28,8 @@ func NewConfig() AgentConfig {
 	flag.StringVar(&config.Endpoint, "a", endpointDefault, "server endpoint")
 	flag.IntVar(&config.ReportInterval, "r", reportIntervalDefault, "report interval sec")
 	flag.IntVar(&config.PoolInterval, "p", poolIntervalDefault, "metrics pool interval sec")
+	flag.StringVar(&config.HashKey, "k", hashKeyDefault, "hash key")
+	flag.IntVar(&config.RateLimit, "l", rateLimitDefault, "rate limit")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -41,6 +47,17 @@ func NewConfig() AgentConfig {
 		interval, err := strconv.Atoi(poolIntervalEnv)
 		if err == nil {
 			config.PoolInterval = interval
+		}
+	}
+
+	if hashKeyEnv := os.Getenv("KEY"); hashKeyEnv != "" {
+		config.HashKey = hashKeyEnv
+	}
+
+	if rateLimitEnv := os.Getenv("RATE_LIMIT"); rateLimitEnv != "" {
+		rateLimit, err := strconv.Atoi(rateLimitEnv)
+		if err == nil {
+			config.RateLimit = rateLimit
 		}
 	}
 
