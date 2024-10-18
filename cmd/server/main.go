@@ -22,7 +22,7 @@ import (
 func main() {
 	config := NewConfig()
 	if err := run(config); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 	os.Exit(0)
 }
