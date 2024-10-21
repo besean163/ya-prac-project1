@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/services"
@@ -20,51 +25,97 @@ const (
 )
 
 func main() {
+	err := logger.Set()
+	if err != nil {
+		log.Fatalf("logger error: %s", err.Error())
+	}
+
 	c := NewConfig()
-	errGroup := new(errgroup.Group)
-	requestCh := make(chan *http.Request)
+	ctx, cancel := context.WithCancel(context.Background())
+	runGracefulShutdown(cancel)
+
+	errGroup, gCtx := errgroup.WithContext(ctx)
+	requestCh := make(chan *http.Request, 1)
+	requestDone := make(chan struct{}, 1)
 
 	storage := inmemstorage.NewStorage()
 	service := services.NewRuntimeService(storage)
 
+	service.Run(gCtx, c.PoolInterval)
+
 	for count := 0; count < c.RateLimit; count++ {
 		errGroup.Go(func() error {
-			worker(requestCh)
+			worker(gCtx, requestCh, requestDone)
 			return nil
 		})
 	}
 
-	service.Run(errGroup, c.PoolInterval)
-
 	errGroup.Go(func() error {
+		// для первого запуска
+		requestDone <- struct{}{}
 		for {
-			time.Sleep(time.Duration(c.ReportInterval) * time.Second)
-			service.RunSendRequest(requestCh, c.Endpoint, c.HashKey)
+			select {
+			case <-gCtx.Done():
+				log.Printf("send request stopped")
+				return nil
+			case <-requestDone:
+				ticker := time.NewTicker(time.Duration(c.ReportInterval) * time.Second)
+				select {
+				case <-gCtx.Done():
+					log.Printf("send request stopped")
+					return nil
+				case <-ticker.C:
+					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey)
+				}
+			}
 		}
 	})
 
-	// errGroup.Go(func() error {
-	// 	for {
-	// 		service.SendMetrics(c.Endpoint, c.HashKey)
-	// 		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
-	// 	}
-	// })
-
 	if err := errGroup.Wait(); err != nil {
-		logger.Get().Debug("agent error", zap.String("error", err.Error()))
+		logger.Get().Info("agent error", zap.String("error", err.Error()))
 	}
+	close(requestCh)
+	log.Printf("full stopped")
 }
 
-func worker(requestCh chan *http.Request) {
+func worker(ctx context.Context, requestCh chan *http.Request, requestDone chan struct{}) {
 	for {
-		req := <-requestCh
+		select {
+		case <-ctx.Done():
+			fmt.Println("worker stopped")
+			return
+		case req := <-requestCh:
+			client := http.Client{}
+			var err error
 
-		client := http.Client{}
-		var err error
-		retry := getRetryFunc(retryAttempts, waitSec, waitSecIncrement)
-		var response *http.Response
-		for retry(err) {
-			response, err = client.Do(req)
+			response, err := client.Do(req)
+			if response != nil && response.Body != nil {
+				response.Body.Close()
+			}
+			attempt := 1
+			secDelta := waitSec
+			for response == nil && err != nil && needRetry(err) && attempt <= retryAttempts {
+				log.Printf("get error, need try again, wait %d sec", secDelta)
+				stop := false
+				ticker := time.NewTicker(time.Duration(secDelta) * time.Second)
+				select {
+				case <-ticker.C:
+					response, err = client.Do(req)
+					if response != nil {
+						response.Body.Close()
+					}
+				case <-ctx.Done():
+					stop = true
+				}
+
+				if stop {
+					break
+				}
+
+				attempt++
+				secDelta += waitSecIncrement
+			}
+
 			if response != nil {
 				if response.StatusCode != http.StatusOK {
 					log.Println("Error write metrics")
@@ -72,40 +123,33 @@ func worker(requestCh chan *http.Request) {
 					log.Println("Code:", response.StatusCode)
 				}
 			}
-			response.Body.Close()
-		}
 
-		if err != nil {
-			log.Printf("call error. Error: %s\n", err)
-			continue
+			if err != nil {
+				log.Printf("call error. Error: %s\n", err)
+			}
+
+			requestDone <- struct{}{}
 		}
 
 	}
+
 }
 
-// возвращает функцию которая следит за количеством повторов и определяет их надобность
-// работает за счет замыкания, т.е. передаем в параметры создающей функции количество попыток и каждую следующую заддержку и эти параметры используем при каждом вызове функции
-func getRetryFunc(attempts, secDelta, waitDelta int) func(err error) bool {
-	attempt := 0
-	return func(err error) bool {
-		attempt++
-
-		// первый запуск
-		if attempt == 1 && attempt <= attempts {
-			return true
-		}
-
-		if err == nil {
-			return false
-		}
-
-		if strings.Contains(err.Error(), "connection refused") {
-			time.Sleep(time.Duration(secDelta) * time.Second)
-			secDelta += waitDelta
-			return attempt <= attempts
-		}
-
-		// если дошли сюда, то попытки закончились
+func needRetry(err error) bool {
+	if err == nil {
 		return false
 	}
+
+	return strings.Contains(err.Error(), "connection refused")
+}
+
+func runGracefulShutdown(cancel context.CancelFunc) {
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-s
+		logger.Get().Info("start shutdown")
+		cancel()
+	}()
 }

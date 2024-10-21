@@ -19,12 +19,13 @@ import (
 
 func TestUpdateMetrics(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	store := mock.NewMockStorage(ctrl)
+	store := mock.NewMockMetricService(ctrl)
 
 	value := new(float64)
 	*value = 20
-	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().SaveMetrics(gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().SaveMetric(gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetMetric("gauge", "testname").Return(metrics.Metrics{ID: "testname", MType: "gauge", Value: value}, nil).AnyTimes()
 	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
 		{
 			MType: "gauge",
@@ -117,12 +118,13 @@ func TestUpdateMetrics(t *testing.T) {
 
 func TestGzipCompression(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	store := mock.NewMockStorage(ctrl)
+	store := mock.NewMockMetricService(ctrl)
 
 	value := new(float64)
 	*value = 20
-	store.EXPECT().SetValue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	store.EXPECT().GetValue("gauge", "testname").Return("20", nil).AnyTimes()
+	store.EXPECT().SaveMetrics(gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().SaveMetric(gomock.Any()).Return(nil).AnyTimes()
+	store.EXPECT().GetMetric("gauge", "testname").Return(metrics.Metrics{ID: "testname", MType: "gauge", Value: value}, nil).AnyTimes()
 	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
 		{
 			MType: "gauge",

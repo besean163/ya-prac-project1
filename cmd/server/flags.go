@@ -25,56 +25,45 @@ type ServerConfig struct {
 }
 
 func NewConfig() ServerConfig {
-	endpointFlag := ""
-	storeIntervalFlag := 0
-	storeFileFlag := ""
-	restoreFlag := false
-	baseDSNFlag := ""
-	hashKeyFlag := ""
-	flag.StringVar(&endpointFlag, "a", endpointDefault, "server endpoint")
-	flag.IntVar(&storeIntervalFlag, "i", storeIntervalDefault, "store interval")
-	flag.StringVar(&storeFileFlag, "f", storeFileDefault, "store file")
-	flag.BoolVar(&restoreFlag, "r", restoreFlagDefault, "restore metrics")
-	flag.StringVar(&baseDSNFlag, "d", baseDSNDefault, "data base dsn")
-	flag.StringVar(&hashKeyFlag, "k", hashKeyDefault, "hash key")
+	c := ServerConfig{}
+
+	flag.StringVar(&c.Endpoint, "a", endpointDefault, "server endpoint")
+	flag.IntVar(&c.StoreInterval, "i", storeIntervalDefault, "store interval")
+	flag.StringVar(&c.StoreFile, "f", storeFileDefault, "store file")
+	flag.BoolVar(&c.Restore, "r", restoreFlagDefault, "restore metrics")
+	flag.StringVar(&c.BaseDNS, "d", baseDSNDefault, "data base dsn")
+	flag.StringVar(&c.HashKey, "k", hashKeyDefault, "hash key")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
-		endpointFlag = endpointEnv
+		c.Endpoint = endpointEnv
 	}
 
 	if storeIntervalEnv := os.Getenv("STORE_INTERVAL"); storeIntervalEnv != "" {
 		i, err := strconv.Atoi(storeIntervalEnv)
 		if err == nil {
-			storeIntervalFlag = i
+			c.StoreInterval = i
 		}
 	}
 
 	if storeFileEnv := os.Getenv("FILE_STORAGE_PATH"); storeFileEnv != "" {
-		storeFileFlag = storeFileEnv
+		c.StoreFile = storeFileEnv
 	}
 
 	if restoreEnv := os.Getenv("RESTORE"); restoreEnv != "" {
 		restore, err := strconv.ParseBool(restoreEnv)
 		if err == nil {
-			restoreFlag = restore
+			c.Restore = restore
 		}
 	}
 
 	if baseDSNEnv := os.Getenv("DATABASE_DSN"); baseDSNEnv != "" {
-		baseDSNFlag = baseDSNEnv
+		c.BaseDNS = baseDSNEnv
 	}
 
 	if hashKeyEnv := os.Getenv("KEY"); hashKeyEnv != "" {
-		hashKeyFlag = hashKeyEnv
+		c.HashKey = hashKeyEnv
 	}
 
-	return ServerConfig{
-		Endpoint:      endpointFlag,
-		StoreInterval: storeIntervalFlag,
-		StoreFile:     storeFileFlag,
-		Restore:       restoreFlag,
-		BaseDNS:       baseDSNFlag,
-		HashKey:       hashKeyFlag,
-	}
+	return c
 }

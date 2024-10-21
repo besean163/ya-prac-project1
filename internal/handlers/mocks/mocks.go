@@ -90,3 +90,83 @@ func (mr *MockStorageMockRecorder) SetValue(t, name, value interface{}) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetValue", reflect.TypeOf((*MockStorage)(nil).SetValue), t, name, value)
 }
+
+// MockMetricService is a mock of MetricService interface.
+type MockMetricService struct {
+	ctrl     *gomock.Controller
+	recorder *MockMetricServiceMockRecorder
+}
+
+// MockMetricServiceMockRecorder is the mock recorder for MockMetricService.
+type MockMetricServiceMockRecorder struct {
+	mock *MockMetricService
+}
+
+// NewMockMetricService creates a new mock instance.
+func NewMockMetricService(ctrl *gomock.Controller) *MockMetricService {
+	mock := &MockMetricService{ctrl: ctrl}
+	mock.recorder = &MockMetricServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMetricService) EXPECT() *MockMetricServiceMockRecorder {
+	return m.recorder
+}
+
+// GetMetric mocks base method.
+func (m *MockMetricService) GetMetric(metricType, name string) (metrics.Metrics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMetric", metricType, name)
+	ret0, _ := ret[0].(metrics.Metrics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMetric indicates an expected call of GetMetric.
+func (mr *MockMetricServiceMockRecorder) GetMetric(metricType, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetric", reflect.TypeOf((*MockMetricService)(nil).GetMetric), metricType, name)
+}
+
+// GetMetrics mocks base method.
+func (m *MockMetricService) GetMetrics() []metrics.Metrics {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMetrics")
+	ret0, _ := ret[0].([]metrics.Metrics)
+	return ret0
+}
+
+// GetMetrics indicates an expected call of GetMetrics.
+func (mr *MockMetricServiceMockRecorder) GetMetrics() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockMetricService)(nil).GetMetrics))
+}
+
+// SaveMetric mocks base method.
+func (m_2 *MockMetricService) SaveMetric(m metrics.Metrics) error {
+	m_2.ctrl.T.Helper()
+	ret := m_2.ctrl.Call(m_2, "SaveMetric", m)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveMetric indicates an expected call of SaveMetric.
+func (mr *MockMetricServiceMockRecorder) SaveMetric(m interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMetric", reflect.TypeOf((*MockMetricService)(nil).SaveMetric), m)
+}
+
+// SaveMetrics mocks base method.
+func (m *MockMetricService) SaveMetrics(ms []metrics.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveMetrics", ms)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveMetrics indicates an expected call of SaveMetrics.
+func (mr *MockMetricServiceMockRecorder) SaveMetrics(ms interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMetrics", reflect.TypeOf((*MockMetricService)(nil).SaveMetrics), ms)
+}

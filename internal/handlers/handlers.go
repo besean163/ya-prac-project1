@@ -22,23 +22,29 @@ type Storage interface {
 	SetMetrics(metrics []metrics.Metrics) error
 }
 
-type ServerHandler struct {
-	storage  Storage
-	database *sql.DB
-	handler  *chi.Mux
-	hashKey  string
+type MetricService interface {
+	GetMetric(metricType, name string) (metrics.Metrics, error)
+	GetMetrics() []metrics.Metrics
+	SaveMetric(m metrics.Metrics) error
+	SaveMetrics(ms []metrics.Metrics) error
 }
 
-func New(storage Storage, db *sql.DB, hashKey string) *ServerHandler {
+type ServerHandler struct {
+	metricService MetricService
+	database      *sql.DB
+	handler       *chi.Mux
+	hashKey       string
+}
+
+func New(metricService MetricService, db *sql.DB, hashKey string) *ServerHandler {
 	s := &ServerHandler{}
-	s.storage = storage
+	s.metricService = metricService
 	s.database = db
 	s.hashKey = hashKey
 	return s
 }
 
 func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-
 	if hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -49,7 +55,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(body, &metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		err = s.storage.SetValue(metric.MType, metric.ID, metric.GetValue())
+		err = s.metricService.SaveMetric(metric)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -58,8 +64,17 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "metric_type")
 		mName := chi.URLParam(r, "metric_name")
 		mValue := chi.URLParam(r, "metric_value")
+		metric := metrics.Metrics{
+			MType: mType,
+			ID:    mName,
+		}
+		err := metric.SetValue(mValue)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-		err := s.storage.SetValue(mType, mName, mValue)
+		err = s.metricService.SaveMetric(metric)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -70,7 +85,6 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Request) {
-
 	if hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -82,7 +96,7 @@ func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Reques
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		err = s.storage.SetMetrics(metrics)
+		err = s.metricService.SaveMetrics(metrics)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -103,13 +117,12 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(body, &metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		v, err := s.storage.GetValue(metric.MType, metric.ID)
+		metric, err = s.metricService.GetMetric(metric.MType, metric.ID)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		metric.SetValue(v)
 
 		body, err = json.Marshal(metric)
 		if err != nil {
@@ -121,16 +134,16 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "metric_type")
 		mName := chi.URLParam(r, "metric_name")
 		if mType != "" && mName != "" {
-			v, err := s.storage.GetValue(mType, mName)
+			metric, err := s.metricService.GetMetric(mType, mName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			w.Write([]byte(v))
+			w.Write([]byte(metric.GetValue()))
 		} else {
 			w.Header().Set("Content-Type", "text/html")
 
-			metrics := s.storage.GetMetrics()
+			metrics := s.metricService.GetMetrics()
 			rows := make([]string, 0)
 			for _, metric := range metrics {
 				row := fmt.Sprintf("%s: %s", metric.ID, metric.GetValue())

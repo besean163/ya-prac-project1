@@ -1,0 +1,1 @@
+/home/besean/go/bin/mockgen -source=internal/handlers/handlers.go -destination=internal/handlers/mocks/mocks.go -package=mock Storage MetricService

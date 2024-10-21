@@ -38,40 +38,6 @@ func NewStorage(db *sql.DB) (*Storage, error) {
 	return &storage, nil
 }
 
-func (s *Storage) SetValue(metricType, name, value string) error {
-	err := checkWrongType(metricType)
-	if err != nil {
-		return err
-	}
-
-	metric := s.GetMetric(metricType, name)
-	if metric == nil {
-		metric = &metrics.Metrics{
-			MType: metricType,
-			ID:    name,
-		}
-		s.AddMetric(metric)
-	}
-
-	metric.SetValue(value)
-	s.UpdateMetric(metric)
-	return nil
-}
-
-func (s *Storage) GetValue(metricType, name string) (string, error) {
-	err := checkWrongType(metricType)
-	if err != nil {
-		return "", err
-	}
-
-	metric := s.GetMetric(metricType, name)
-	if metric == nil {
-		return "", errors.New("not found metric")
-	}
-
-	return metric.GetValue(), nil
-}
-
 func (s *Storage) GetMetrics() []metrics.Metrics {
 	items := []metrics.Metrics{}
 
@@ -113,23 +79,44 @@ func (s *Storage) GetMetrics() []metrics.Metrics {
 	return items
 }
 
-func (s *Storage) GetMetric(metricType, name string) *metrics.Metrics {
-	row := s.DB.QueryRow("SELECT type,name,value,delta FROM metrics WHERE type = $1 AND name = $2", metricType, name)
-
-	if row.Err() != nil {
-		logger.Get().Debug("get metric error", zap.String("error", row.Err().Error()))
-	}
-	var metric metrics.Metrics
-	err := row.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
+func (s *Storage) CreateMetrics(ms []metrics.Metrics) error {
+	tx, err := s.DB.Begin()
 	if err != nil {
-		logger.Get().Debug("get metric scan error:" + err.Error())
+		return err
 	}
 
-	if metric.ID == "" {
-		return nil
+	for _, metric := range ms {
+		m := metric
+		_, err := tx.Exec(getInsertMetricSQL(), m.MType, m.ID, m.Value, m.Delta)
+		if err != nil {
+			logger.Get().Info("tx insert metric error", zap.String("error", err.Error()))
+			tx.Rollback()
+			return err
+		}
+
 	}
 
-	return &metric
+	return tx.Commit()
+}
+
+func (s *Storage) UpdateMetrics(ms []metrics.Metrics) error {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, metric := range ms {
+		m := metric
+		_, err := tx.Exec(getUpdateMetricSQL(), m.Value, m.Delta, m.MType, m.ID)
+		if err != nil {
+			logger.Get().Info("tx update metric error", zap.String("error", err.Error()))
+			tx.Rollback()
+			return err
+		}
+
+	}
+
+	return tx.Commit()
 }
 
 func (s *Storage) prepareDB() error {
@@ -147,97 +134,6 @@ func (s *Storage) prepareDB() error {
 	return nil
 }
 
-func checkWrongType(metricType string) error {
-	if metricType != metrics.MetricTypeGauge &&
-		metricType != metrics.MetricTypeCounter {
-		return errors.New("wrong type")
-	}
-
-	return nil
-}
-
-func (s Storage) UpdateMetric(metric *metrics.Metrics) error {
-	retry := getRetryFunc(3, 2)
-
-	var err error
-	for retry(err) {
-		_, err = s.DB.Exec(getUpdateMetricSQL(), metric.Value, metric.Delta, metric.MType, metric.ID)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s Storage) AddMetric(metric *metrics.Metrics) error {
-
-	retry := getRetryFunc(3, 2)
-
-	var err error
-	for retry(err) {
-		_, err = s.DB.Exec(getInsertMetricSQL(), metric.MType, metric.ID, metric.Value, metric.Delta)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Storage) SetMetrics(metrics []metrics.Metrics) error {
-	existMetrics := s.GetMetrics()
-	if len(metrics) == 0 {
-		return nil
-	}
-
-	tx, err := s.DB.Begin()
-	if err != nil {
-		return err
-	}
-
-	found := false
-	for _, metric := range metrics {
-		found = false
-		for _, eMetric := range existMetrics {
-			if metric.MType == eMetric.MType && metric.ID == eMetric.ID {
-				e := eMetric
-				value := new(float64)
-				if metric.Value != nil {
-					*value = *metric.Value
-				}
-				delta := new(int64)
-				if metric.Delta != nil {
-					*delta = *metric.Delta + *e.Delta
-				}
-				e.Value = value
-				e.Delta = delta
-				_, err := tx.Exec(getUpdateMetricSQL(), e.Value, e.Delta, e.MType, e.ID)
-				if err != nil {
-					logger.Get().Debug("tx update metric error", zap.String("error", err.Error()))
-					tx.Rollback()
-					return err
-				}
-				found = true
-				break
-			}
-		}
-		if !found {
-			m := metric
-			_, err := tx.Exec(getInsertMetricSQL(), m.MType, m.ID, m.Value, m.Delta)
-			if err != nil {
-				logger.Get().Debug("tx insert metric error", zap.String("error", err.Error()))
-				tx.Rollback()
-				return err
-			}
-			existMetrics = append(existMetrics, m)
-		}
-	}
-
-	return tx.Commit()
-}
 
 func getRetryFunc(attempts, waitDelta int) func(err error) bool {
 	secDelta := 0

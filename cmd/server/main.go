@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"ya-prac-project1/internal/handlers"
 	"ya-prac-project1/internal/logger"
+	"ya-prac-project1/internal/services"
 	"ya-prac-project1/internal/storage/databasestorage"
 	"ya-prac-project1/internal/storage/filestorage"
 	"ya-prac-project1/internal/storage/inmemstorage"
@@ -34,19 +35,16 @@ func run(config ServerConfig) error {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		s := make(chan os.Signal, 1)
-		signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-s
-		cancel()
-	}()
+	runGracefulShutdown(cancel)
 
 	store, err := getStorage(ctx, config, getSQLConnect(config))
 	if err != nil {
 		return err
 	}
 
-	h := handlers.New(store, getSQLConnect(config), config.HashKey)
+	metricService := services.NewMetricSaverService(store)
+
+	h := handlers.New(metricService, getSQLConnect(config), config.HashKey)
 	h.Mount()
 
 	srv := &http.Server{
@@ -55,7 +53,6 @@ func run(config ServerConfig) error {
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-
 	g.Go(func() error {
 		fmt.Printf("Start server on: %s\n", config.Endpoint)
 		if err = srv.ListenAndServe(); err != nil {
@@ -66,6 +63,7 @@ func run(config ServerConfig) error {
 
 	g.Go(func() error {
 		<-gCtx.Done()
+		fmt.Printf("Stop server on: %s\n", config.Endpoint)
 		if err = srv.Shutdown(context.Background()); err != nil {
 			fmt.Printf("Start server on: %s\n", config.Endpoint)
 			return err
@@ -81,7 +79,7 @@ func run(config ServerConfig) error {
 	return nil
 }
 
-func getStorage(ctx context.Context, config ServerConfig, db *sql.DB) (handlers.Storage, error) {
+func getStorage(ctx context.Context, config ServerConfig, db *sql.DB) (services.SaveStorage, error) {
 	if config.BaseDNS != "" {
 		return databasestorage.NewStorage(db)
 	} else if config.StoreFile != "" {
@@ -98,9 +96,19 @@ func getSQLConnect(config ServerConfig) *sql.DB {
 	}
 	db, err := sql.Open("pgx", config.BaseDNS)
 	if err != nil {
-		logger.Get().Debug("can't connect base.", zap.String("Error", err.Error()))
+		logger.Get().Info("can't connect base.", zap.String("Error", err.Error()))
 		return nil
 	}
 
 	return db
+}
+
+func runGracefulShutdown(cancel context.CancelFunc) {
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-s
+		cancel()
+	}()
 }

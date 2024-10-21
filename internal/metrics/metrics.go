@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -15,6 +16,12 @@ type Metrics struct {
 	MType string   `json:"type"`
 	Delta *int64   `json:"delta,omitempty"`
 	Value *float64 `json:"value,omitempty"`
+}
+
+func NewMetric(name, mType, value string) Metrics {
+	item := Metrics{ID: name, MType: mType}
+	item.SetValue(value)
+	return item
 }
 
 func (m *Metrics) SetValue(value string) error {
@@ -51,4 +58,21 @@ func (m *Metrics) GetValue() string {
 		}
 	}
 	return ""
+}
+
+func (m Metrics) Validate() error {
+	if m.MType != MetricTypeGauge &&
+		m.MType != MetricTypeCounter {
+		return errors.New("wrong metric type")
+	}
+
+	return nil
+}
+
+func (m Metrics) GetKey() string {
+	return fmt.Sprintf("%s_%s", m.MType, m.ID)
+}
+
+func (m Metrics) GetInfo() string {
+	return fmt.Sprintf("%s - %s - %s", m.ID, m.MType, m.GetValue())
 }
