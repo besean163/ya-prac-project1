@@ -1,4 +1,4 @@
-package main
+package handlers_test
 
 import (
 	"bytes"
@@ -103,7 +103,7 @@ func TestUpdateMetrics(t *testing.T) {
 			path:       "/updates/",
 			body:       `[{"id": "test_name","type": "gauge"}]`,
 			checkValue: false,
-			result:     `{"id": "test_name","type": "gauge","value": 20}`,
+			result:     ``,
 		},
 	}
 
