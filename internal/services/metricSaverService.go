@@ -22,11 +22,31 @@ func NewMetricSaverService(storage SaveStorage) *MetricSaverService {
 }
 
 func (s *MetricSaverService) GetMetric(metricType, name string) (metrics.Metrics, error) {
+
+	// m := metrics.Metrics{
+	// 	MType: metricType,
+	// 	ID:    name,
+	// }
+
+	// found := false
+	// for _, em := range s.GetMetrics() {
+	// 	if em.GetKey() != m.GetKey() {
+	// 		continue
+	// 	}
+	// 	found = true
+	// 	m = em
+	// 	break
+	// }
+
+	// if !found {
+	// 	return m, fmt.Errorf("metric not found")
+	// }
+	// return m, nil
+
 	metric := metrics.Metrics{
 		MType: metricType,
 		ID:    name,
 	}
-
 	metricsMap := s.getMetricsKeyMap()
 	metric, ok := metricsMap[metric.GetKey()]
 	if !ok {

@@ -15,13 +15,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Storage interface {
-	SetValue(t, name, value string) error
-	GetValue(t, name string) (string, error)
-	GetMetrics() []metrics.Metrics
-	SetMetrics(metrics []metrics.Metrics) error
-}
-
 type MetricService interface {
 	GetMetric(metricType, name string) (metrics.Metrics, error)
 	GetMetrics() []metrics.Metrics
