@@ -13,6 +13,7 @@ const (
 	restoreFlagDefault   = true
 	baseDSNDefault       = ""
 	hashKeyDefault       = ""
+	profilerDefault      = ""
 )
 
 type ServerConfig struct {
@@ -22,6 +23,7 @@ type ServerConfig struct {
 	Restore       bool
 	BaseDNS       string
 	HashKey       string
+	Profiler      string
 }
 
 func NewConfig() ServerConfig {
@@ -33,6 +35,7 @@ func NewConfig() ServerConfig {
 	flag.BoolVar(&c.Restore, "r", restoreFlagDefault, "restore metrics")
 	flag.StringVar(&c.BaseDNS, "d", baseDSNDefault, "data base dsn")
 	flag.StringVar(&c.HashKey, "k", hashKeyDefault, "hash key")
+	flag.StringVar(&c.Profiler, "p", profilerDefault, "profiler port")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {

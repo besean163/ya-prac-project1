@@ -1,23 +1,28 @@
+// Модуль inmemstorage предоставляет хранилище в памяти
 package inmemstorage
 
 import (
 	"ya-prac-project1/internal/metrics"
 )
 
+// Storage структура представляющая репозиторий
 type Storage struct {
 	Metrics []metrics.Metrics
 }
 
+// NewStorage создает репозиторий
 func NewStorage() *Storage {
 	return &Storage{
 		Metrics: make([]metrics.Metrics, 0),
 	}
 }
 
+// GetMetrics возвращает все метрики в репозитории
 func (s *Storage) GetMetrics() []metrics.Metrics {
 	return s.Metrics
 }
 
+// CreateMetrics добавляет полученные метрики в репозиторий
 func (s *Storage) CreateMetrics(ms []metrics.Metrics) error {
 	ems := s.GetMetrics()
 	ems = append(ems, ms...)
@@ -26,6 +31,7 @@ func (s *Storage) CreateMetrics(ms []metrics.Metrics) error {
 	return nil
 }
 
+// UpdateMetrics обновляет полученные метрики в репозитории
 func (s *Storage) UpdateMetrics(ms []metrics.Metrics) error {
 	ems := s.GetMetrics()
 	for _, m := range ms {
@@ -41,6 +47,7 @@ func (s *Storage) UpdateMetrics(ms []metrics.Metrics) error {
 	return nil
 }
 
+// SetMetrics заменяет метркии в репозитории на полученные
 func (s *Storage) SetMetrics(ms []metrics.Metrics) {
 	s.Metrics = ms
 }

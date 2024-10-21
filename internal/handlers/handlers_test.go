@@ -1,8 +1,9 @@
-package main
+package handlers_test
 
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,7 @@ func TestUpdateMetrics(t *testing.T) {
 	store.EXPECT().SaveMetrics(gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().SaveMetric(gomock.Any()).Return(nil).AnyTimes()
 	store.EXPECT().GetMetric("gauge", "testname").Return(metrics.Metrics{ID: "testname", MType: "gauge", Value: value}, nil).AnyTimes()
+	store.EXPECT().GetMetric("gauge", "test_name").Return(metrics.Metrics{ID: "test_name", MType: "gauge", Value: value}, nil).AnyTimes()
 	store.EXPECT().GetMetrics().Return([]metrics.Metrics{
 		{
 			MType: "gauge",
@@ -91,16 +93,32 @@ func TestUpdateMetrics(t *testing.T) {
 			code:       200,
 			method:     http.MethodPost,
 			path:       "/value/",
-			body:       `{"id": "test_name","type": "gauge"}`,
+			body:       `{"id":"test_name","type":"gauge"}`,
+			checkValue: true,
+			result:     `{"id":"test_name","type":"gauge","value":20}`,
+		},
+		{
+			code:       200,
+			method:     http.MethodPost,
+			path:       "/updates/",
+			body:       `[{"id": "test_name","type": "gauge"}]`,
 			checkValue: false,
-			result:     `{"id": "test_name","type": "gauge","value": 20}`,
+			result:     ``,
 		},
 	}
 
 	for _, test := range tests {
 		logger.Set()
 		t.Run(test.path, func(t *testing.T) {
-			req, _ := http.NewRequest(test.method, test.path, nil)
+			var b io.Reader
+			if test.body != "" {
+				b = bytes.NewReader([]byte(test.body))
+			}
+			req, _ := http.NewRequest(test.method, test.path, b)
+			if test.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
 			rr := httptest.NewRecorder()
 
 			h.Mount()
@@ -110,6 +128,7 @@ func TestUpdateMetrics(t *testing.T) {
 
 			if test.checkValue {
 				answer, _ := io.ReadAll(rr.Body)
+				fmt.Println(string(answer))
 				assert.Equal(t, test.result, string(answer))
 			}
 		})

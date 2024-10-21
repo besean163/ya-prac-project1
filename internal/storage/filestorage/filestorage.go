@@ -1,3 +1,4 @@
+// Модуль filestorage предоставляет хранилище в файле
 package filestorage
 
 import (
@@ -11,11 +12,13 @@ import (
 	"ya-prac-project1/internal/storage/inmemstorage"
 )
 
+// Storage структура представляющая репозиторий
 type Storage struct {
 	*inmemstorage.Storage
 	FilePath string
 }
 
+// NewStorage создает репозиторий
 func NewStorage(ctx context.Context, path string, restore bool, dumpInterval int64) (*Storage, error) {
 	store := Storage{
 		Storage:  inmemstorage.NewStorage(),

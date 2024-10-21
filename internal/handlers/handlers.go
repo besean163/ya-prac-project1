@@ -1,3 +1,4 @@
+// Модуль handlers предоставляет работу по маршрутизации входящих запросов
 package handlers
 
 import (
@@ -15,13 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Storage interface {
-	SetValue(t, name, value string) error
-	GetValue(t, name string) (string, error)
-	GetMetrics() []metrics.Metrics
-	SetMetrics(metrics []metrics.Metrics) error
-}
-
+// MetricService представляет интерфейс сервиса работы с метриками
 type MetricService interface {
 	GetMetric(metricType, name string) (metrics.Metrics, error)
 	GetMetrics() []metrics.Metrics
@@ -29,6 +24,7 @@ type MetricService interface {
 	SaveMetrics(ms []metrics.Metrics) error
 }
 
+// ServerHandler представляет структуру сервера
 type ServerHandler struct {
 	metricService MetricService
 	database      *sql.DB
@@ -36,6 +32,7 @@ type ServerHandler struct {
 	hashKey       string
 }
 
+// New создает новый экземпляр сервера
 func New(metricService MetricService, db *sql.DB, hashKey string) *ServerHandler {
 	s := &ServerHandler{}
 	s.metricService = metricService
@@ -44,6 +41,7 @@ func New(metricService MetricService, db *sql.DB, hashKey string) *ServerHandler
 	return s
 }
 
+// UpdateMetrics обновляет метрики в привязаном сервисе метрик
 func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	if hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
@@ -84,6 +82,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// UpdateBatchMetrics обновляет пук метрик в привязаном сервисе метрик
 func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Request) {
 	if hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
@@ -106,6 +105,7 @@ func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetMetrics получает запрашиваемые метрики из сервиса метрик
 func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && hasJSONHeader(r) {
 		body, err := io.ReadAll(r.Body)
@@ -155,6 +155,7 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Ping тестовый роут на проверку подключения к бд
 func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if s.database == nil {
@@ -171,6 +172,7 @@ func (s *ServerHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getMetricPage выводит страницу со всеми имеющимися метриками
 func getMetricPage(rows []string) string {
 	page := `<!DOCTYPE html><html><head><title>Report</title></head><body>`
 
@@ -182,6 +184,7 @@ func getMetricPage(rows []string) string {
 	return page
 }
 
+// Mount монтирует маршруты на сервер
 func (s *ServerHandler) Mount() {
 	router := chi.NewRouter()
 	router.Route("/", func(r chi.Router) {
@@ -196,6 +199,7 @@ func (s *ServerHandler) Mount() {
 	s.handler = router
 }
 
+// ServeHTTP обрабатывает входящий запрос
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h := logMiddleware(zipMiddleware(s.handler))

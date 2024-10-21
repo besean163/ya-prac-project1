@@ -22,19 +22,23 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storage структура представляющая интерфейс репозитория для работы с сервисом RuntimeService
 type Storage interface {
 	GetMetrics() []metrics.Metrics
 	SetMetrics(metrics []metrics.Metrics)
 }
 
+// RuntimeService структура представляющая сервис для получения рантайм метрик
 type RuntimeService struct {
 	storage Storage
 }
 
+// RuntimeService создает сервис
 func NewRuntimeService(storage Storage) RuntimeService {
 	return RuntimeService{storage: storage}
 }
 
+// Run запускает работу сервиса
 func (s RuntimeService) Run(ctx context.Context, poolInterval int) {
 	go s.updateRuntimeMetrics(ctx, poolInterval)
 }
