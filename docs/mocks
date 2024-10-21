@@ -1,1 +1,2 @@
-/home/besean/go/bin/mockgen -source=internal/handlers/handlers.go -destination=internal/handlers/mocks/mocks.go -package=mock Storage MetricService
+/home/besean/go/bin/mockgen -source=internal/handlers/handlers.go -destination=internal/handlers/mocks/mocks.go -package=mock MetricService
+/home/besean/go/bin/mockgen -source=internal/services/metricSaverService.go -destination=internal/services/mocks/mocks.go -package=mock SaveStorage
