@@ -18,6 +18,8 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -36,6 +38,7 @@ func run(config ServerConfig) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	runGracefulShutdown(cancel)
+	RunProfiler(ctx, config.Profiler)
 
 	store, err := getStorage(ctx, config, getSQLConnect(config))
 	if err != nil {
@@ -110,5 +113,30 @@ func runGracefulShutdown(cancel context.CancelFunc) {
 	go func() {
 		<-s
 		cancel()
+	}()
+}
+
+func RunProfiler(ctx context.Context, port string) {
+	if port == "" {
+		return
+	}
+
+	ps := &http.Server{
+		Addr: port,
+	}
+
+	go func() {
+		err := ps.ListenAndServe()
+		if err != nil {
+			logger.Get().Info("Fail start prof server", zap.String("error", err.Error()))
+		}
+	}()
+
+	go func() {
+		<-ctx.Done()
+		logger.Get().Info("Stop prof server")
+		if err := ps.Shutdown(context.Background()); err != nil {
+			logger.Get().Info("Fail shutdown prof server", zap.String("error", err.Error()))
+		}
 	}()
 }

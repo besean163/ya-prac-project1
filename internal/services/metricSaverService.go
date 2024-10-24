@@ -1,3 +1,4 @@
+// Модуль services предоставляет сервисы для работы с метриками
 package services
 
 import (
@@ -5,28 +6,31 @@ import (
 	"ya-prac-project1/internal/metrics"
 )
 
+// SaveStorage структура представляющая интерфейс репозитория для работы с сервисом MetricSaverService
 type SaveStorage interface {
 	GetMetrics() []metrics.Metrics
 	CreateMetrics([]metrics.Metrics) error
 	UpdateMetrics([]metrics.Metrics) error
 }
 
+// MetricSaverService структура представляющая сервис для хранения метрик
 type MetricSaverService struct {
 	storage SaveStorage
 }
 
+// NewMetricSaverService создает сервис
 func NewMetricSaverService(storage SaveStorage) *MetricSaverService {
 	return &MetricSaverService{
 		storage: storage,
 	}
 }
 
+// GetMetric получает метрику по имени и типу. Возвращает ошибку в случае если не находит запрашиваемую метрику
 func (s *MetricSaverService) GetMetric(metricType, name string) (metrics.Metrics, error) {
 	metric := metrics.Metrics{
 		MType: metricType,
 		ID:    name,
 	}
-
 	metricsMap := s.getMetricsKeyMap()
 	metric, ok := metricsMap[metric.GetKey()]
 	if !ok {
@@ -36,10 +40,12 @@ func (s *MetricSaverService) GetMetric(metricType, name string) (metrics.Metrics
 	return metric, nil
 }
 
+// GetMetrics отдает все метрики которы есть в репозитории сервиса
 func (s *MetricSaverService) GetMetrics() []metrics.Metrics {
 	return s.storage.GetMetrics()
 }
 
+// SaveMetric сохраняет входную метрику
 func (s *MetricSaverService) SaveMetric(m metrics.Metrics) error {
 	err := m.Validate()
 	if err != nil {
@@ -78,6 +84,7 @@ func (s *MetricSaverService) SaveMetric(m metrics.Metrics) error {
 	return nil
 }
 
+// SaveMetrics сохраняет набор входных метрик
 func (s *MetricSaverService) SaveMetrics(ms []metrics.Metrics) error {
 	var createMetrics []metrics.Metrics
 	var updateMetrics []metrics.Metrics

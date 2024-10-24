@@ -1,3 +1,4 @@
+// Модуль databasestorage предоставляет хранилище в sql базе
 package databasestorage
 
 import (
@@ -13,10 +14,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// Storage структура представляющая репозиторий
 type Storage struct {
 	DB *sql.DB
 }
 
+// NewStorage создает репозиторий
 func NewStorage(db *sql.DB) (*Storage, error) {
 	var err error
 	if db == nil {
@@ -38,6 +41,7 @@ func NewStorage(db *sql.DB) (*Storage, error) {
 	return &storage, nil
 }
 
+// GetMetrics возвращает все метрики в репозитории
 func (s *Storage) GetMetrics() []metrics.Metrics {
 	items := []metrics.Metrics{}
 
@@ -79,6 +83,7 @@ func (s *Storage) GetMetrics() []metrics.Metrics {
 	return items
 }
 
+// CreateMetrics добавляет полученные метрики в репозиторий
 func (s *Storage) CreateMetrics(ms []metrics.Metrics) error {
 	tx, err := s.DB.Begin()
 	if err != nil {
@@ -99,6 +104,7 @@ func (s *Storage) CreateMetrics(ms []metrics.Metrics) error {
 	return tx.Commit()
 }
 
+// UpdateMetrics обновляет полученные метрики в репозитории
 func (s *Storage) UpdateMetrics(ms []metrics.Metrics) error {
 	tx, err := s.DB.Begin()
 	if err != nil {
@@ -133,7 +139,6 @@ func (s *Storage) prepareDB() error {
 	}
 	return nil
 }
-
 
 func getRetryFunc(attempts, waitDelta int) func(err error) bool {
 	secDelta := 0

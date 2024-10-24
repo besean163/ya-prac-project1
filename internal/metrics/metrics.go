@@ -1,3 +1,4 @@
+// Модуль metrics предоставляет структуру метрикик и методы работы с ней
 package metrics
 
 import (
@@ -7,10 +8,13 @@ import (
 )
 
 const (
-	MetricTypeGauge   = "gauge"
+	// MetricTypeGauge — тип метрики содержащей значение с плавающей точкой
+	MetricTypeGauge = "gauge"
+	// MetricTypeCounter — тип метрики содержащей целое значение
 	MetricTypeCounter = "counter"
 )
 
+// Metrics представляет структуру метрики
 type Metrics struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
@@ -18,12 +22,14 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
+// NewMetric создает новую метрику
 func NewMetric(name, mType, value string) Metrics {
 	item := Metrics{ID: name, MType: mType}
 	item.SetValue(value)
 	return item
 }
 
+// SetValue обновляет значение метрики
 func (m *Metrics) SetValue(value string) error {
 	switch m.MType {
 	case MetricTypeGauge:
@@ -46,6 +52,7 @@ func (m *Metrics) SetValue(value string) error {
 	return nil
 }
 
+// GetValue возвращает значение метрики
 func (m *Metrics) GetValue() string {
 	switch m.MType {
 	case MetricTypeGauge:
@@ -60,6 +67,7 @@ func (m *Metrics) GetValue() string {
 	return ""
 }
 
+// Validate валидирует метрку, проверяет ее тип
 func (m Metrics) Validate() error {
 	if m.MType != MetricTypeGauge &&
 		m.MType != MetricTypeCounter {
@@ -69,10 +77,12 @@ func (m Metrics) Validate() error {
 	return nil
 }
 
+// GetKey получает уникальный ключ метрики
 func (m Metrics) GetKey() string {
 	return fmt.Sprintf("%s_%s", m.MType, m.ID)
 }
 
+// GetInfo получает информацию о метрике в строковом формате
 func (m Metrics) GetInfo() string {
 	return fmt.Sprintf("%s - %s - %s", m.ID, m.MType, m.GetValue())
 }

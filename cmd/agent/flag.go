@@ -12,6 +12,7 @@ const (
 	poolIntervalDefault   = 1
 	hashKeyDefault        = ""
 	rateLimitDefault      = 1
+	profilerDefault       = ""
 )
 
 type AgentConfig struct {
@@ -20,6 +21,7 @@ type AgentConfig struct {
 	PoolInterval   int
 	HashKey        string
 	RateLimit      int
+	Profiler       string
 }
 
 func NewConfig() AgentConfig {
@@ -30,6 +32,7 @@ func NewConfig() AgentConfig {
 	flag.IntVar(&config.PoolInterval, "p", poolIntervalDefault, "metrics pool interval sec")
 	flag.StringVar(&config.HashKey, "k", hashKeyDefault, "hash key")
 	flag.IntVar(&config.RateLimit, "l", rateLimitDefault, "rate limit")
+	flag.StringVar(&config.Profiler, "profile", profilerDefault, "profiler port")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
