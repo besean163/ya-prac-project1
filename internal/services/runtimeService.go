@@ -33,7 +33,7 @@ type RuntimeService struct {
 	storage Storage
 }
 
-// RuntimeService создает сервис
+// NewRuntimeService создает сервис
 func NewRuntimeService(storage Storage) RuntimeService {
 	return RuntimeService{storage: storage}
 }

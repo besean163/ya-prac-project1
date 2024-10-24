@@ -1,4 +1,4 @@
-// Модуль databasestorage предоставляет хранилище в sql базе
+// Package databasestorage предоставляет хранилище в sql базе
 package databasestorage
 
 import (

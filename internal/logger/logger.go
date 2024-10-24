@@ -1,4 +1,4 @@
-// Модуль logger предоставляет доступ к глобальному логгеру
+// Package logger предоставляет доступ к глобальному логгеру
 package logger
 
 import "go.uber.org/zap"

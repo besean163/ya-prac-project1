@@ -1,4 +1,4 @@
-// Модуль filestorage предоставляет хранилище в файле
+// Package filestorage предоставляет хранилище в файле
 package filestorage
 
 import (

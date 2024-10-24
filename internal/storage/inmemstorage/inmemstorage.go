@@ -1,4 +1,4 @@
-// Модуль inmemstorage предоставляет хранилище в памяти
+// Package inmemstorage предоставляет хранилище в памяти
 package inmemstorage
 
 import (
