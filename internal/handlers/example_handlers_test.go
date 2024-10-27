@@ -75,7 +75,7 @@ func ExampleServerHandler_GetMetrics_third() {
 	fmt.Println(string(answer))
 
 	// Output:
-	// {"id":"testname","type":"gauge","value":20}
+	// {"value":20,"id":"testname","type":"gauge"}
 }
 
 func ExampleServerHandler_UpdateMetrics() {

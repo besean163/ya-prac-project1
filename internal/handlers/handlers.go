@@ -50,7 +50,7 @@ func (s *ServerHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metric := metrics.Metrics{}
-		if err := json.Unmarshal(body, &metric); err != nil {
+		if err = json.Unmarshal(body, &metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		err = s.metricService.SaveMetric(metric)
@@ -91,7 +91,7 @@ func (s *ServerHandler) UpdateBatchMetrics(w http.ResponseWriter, r *http.Reques
 		}
 
 		metrics := []metrics.Metrics{}
-		if err := json.Unmarshal(body, &metrics); err != nil {
+		if err = json.Unmarshal(body, &metrics); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
@@ -114,7 +114,7 @@ func (s *ServerHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metric := metrics.Metrics{}
-		if err := json.Unmarshal(body, &metric); err != nil {
+		if err = json.Unmarshal(body, &metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		metric, err = s.metricService.GetMetric(metric.MType, metric.ID)

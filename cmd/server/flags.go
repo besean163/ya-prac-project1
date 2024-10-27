@@ -18,12 +18,12 @@ const (
 
 type ServerConfig struct {
 	Endpoint      string
-	StoreInterval int
 	StoreFile     string
-	Restore       bool
 	BaseDNS       string
 	HashKey       string
 	Profiler      string
+	Restore       bool
+	StoreInterval int
 }
 
 func NewConfig() ServerConfig {

@@ -27,7 +27,6 @@ func main() {
 	if err := run(config); err != nil {
 		log.Fatal(err.Error())
 	}
-	os.Exit(0)
 }
 
 func run(config ServerConfig) error {
