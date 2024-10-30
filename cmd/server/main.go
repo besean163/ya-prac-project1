@@ -22,7 +22,14 @@ import (
 	_ "net/http/pprof"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	showBuildInfo()
 	config := NewConfig()
 	if err := run(config); err != nil {
 		log.Fatal(err.Error())
@@ -138,4 +145,23 @@ func RunProfiler(ctx context.Context, port string) {
 			logger.Get().Info("Fail shutdown prof server", zap.String("error", err.Error()))
 		}
 	}()
+}
+
+func showBuildInfo() {
+	na := "N/A"
+	if buildVersion == "" {
+		buildVersion = na
+	}
+
+	if buildDate == "" {
+		buildDate = na
+	}
+
+	if buildCommit == "" {
+		buildCommit = na
+	}
+
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }

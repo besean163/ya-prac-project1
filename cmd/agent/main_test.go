@@ -83,3 +83,7 @@ func TestNeedRetry(t *testing.T) {
 	err = errors.New("connection refused")
 	assert.True(t, needRetry(err))
 }
+
+func TestShowBuildInfo(t *testing.T) {
+	showBuildInfo()
+}

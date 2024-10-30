@@ -79,3 +79,7 @@ func TestNewConfig(t *testing.T) {
 	assert.Equal(t, "test_key", c.HashKey)
 	assert.Equal(t, "", c.Profiler)
 }
+
+func TestShowBuildInfo(t *testing.T) {
+	showBuildInfo()
+}
