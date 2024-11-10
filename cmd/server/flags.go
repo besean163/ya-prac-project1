@@ -14,6 +14,7 @@ const (
 	baseDSNDefault       = ""
 	hashKeyDefault       = ""
 	profilerDefault      = ""
+	cryptoKeyDefault     = ""
 )
 
 type ServerConfig struct {
@@ -24,6 +25,7 @@ type ServerConfig struct {
 	Profiler      string
 	Restore       bool
 	StoreInterval int
+	CryptoKey     string
 }
 
 func NewConfig() ServerConfig {
@@ -36,6 +38,7 @@ func NewConfig() ServerConfig {
 	flag.StringVar(&c.BaseDNS, "d", baseDSNDefault, "data base dsn")
 	flag.StringVar(&c.HashKey, "k", hashKeyDefault, "hash key")
 	flag.StringVar(&c.Profiler, "p", profilerDefault, "profiler port")
+	flag.StringVar(&c.CryptoKey, "crypto-key", cryptoKeyDefault, "crypto key")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -66,6 +69,10 @@ func NewConfig() ServerConfig {
 
 	if hashKeyEnv := os.Getenv("KEY"); hashKeyEnv != "" {
 		c.HashKey = hashKeyEnv
+	}
+
+	if cryptoKeyEnv := os.Getenv("CRYPTO_KEY"); cryptoKeyEnv != "" {
+		c.CryptoKey = cryptoKeyEnv
 	}
 
 	return c

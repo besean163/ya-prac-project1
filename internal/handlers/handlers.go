@@ -30,14 +30,16 @@ type ServerHandler struct {
 	database      *sql.DB
 	handler       *chi.Mux
 	hashKey       string
+	cryptoKey     string
 }
 
 // New создает новый экземпляр сервера
-func New(metricService MetricService, db *sql.DB, hashKey string) *ServerHandler {
+func New(metricService MetricService, db *sql.DB, hashKey string, cryptoKey string) *ServerHandler {
 	s := &ServerHandler{}
 	s.metricService = metricService
 	s.database = db
 	s.hashKey = hashKey
+	s.cryptoKey = cryptoKey
 	return s
 }
 
@@ -201,13 +203,11 @@ func (s *ServerHandler) Mount() {
 
 // ServeHTTP обрабатывает входящий запрос
 func (s *ServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	h := logMiddleware(zipMiddleware(s.handler))
+	h := logMiddleware(cryptoKeyMiddleware(zipMiddleware(s.handler), s.cryptoKey))
 
 	if s.hashKey != "" {
 		h = hashKeyMiddleware(h, s.hashKey)
 	}
-
 	h.ServeHTTP(w, r)
 }
 

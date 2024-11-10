@@ -36,7 +36,7 @@ func TestUpdateMetrics(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, nil, "")
+	h := handlers.New(store, nil, "", "")
 
 	tests := []struct {
 		method     string
@@ -152,7 +152,7 @@ func TestGzipCompression(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, nil, "")
+	h := handlers.New(store, nil, "", "")
 
 	valueResponse := "20"
 	t.Run("value", func(t *testing.T) {

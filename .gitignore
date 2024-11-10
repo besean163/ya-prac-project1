@@ -29,4 +29,5 @@ some
 cmd/test
 internal/storage/filestorage/test
 cmd/staticlint/staticlint
+/certificates
 

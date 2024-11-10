@@ -75,7 +75,7 @@ func main() {
 					log.Printf("send request stopped")
 					return nil
 				case <-ticker.C:
-					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey)
+					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey, c.CryptoKey)
 				}
 			}
 		}

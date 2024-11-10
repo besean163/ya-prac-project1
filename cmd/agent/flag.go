@@ -13,6 +13,7 @@ const (
 	hashKeyDefault        = ""
 	rateLimitDefault      = 1
 	profilerDefault       = ""
+	cryptoKeyDefault      = ""
 )
 
 type AgentConfig struct {
@@ -22,6 +23,7 @@ type AgentConfig struct {
 	ReportInterval int
 	PoolInterval   int
 	RateLimit      int
+	CryptoKey      string
 }
 
 func NewConfig() AgentConfig {
@@ -33,6 +35,8 @@ func NewConfig() AgentConfig {
 	flag.StringVar(&config.HashKey, "k", hashKeyDefault, "hash key")
 	flag.IntVar(&config.RateLimit, "l", rateLimitDefault, "rate limit")
 	flag.StringVar(&config.Profiler, "profile", profilerDefault, "profiler port")
+	flag.StringVar(&config.CryptoKey, "crypto-key", cryptoKeyDefault, "crypto key")
+
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -62,6 +66,10 @@ func NewConfig() AgentConfig {
 		if err == nil {
 			config.RateLimit = rateLimit
 		}
+	}
+
+	if cryptoKeyEnv := os.Getenv("CRYPTO_KEY"); cryptoKeyEnv != "" {
+		config.CryptoKey = cryptoKeyEnv
 	}
 
 	return config
