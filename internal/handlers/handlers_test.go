@@ -39,12 +39,12 @@ func TestUpdateMetrics(t *testing.T) {
 	h := handlers.New(store, nil, "")
 
 	tests := []struct {
-		code       int
 		method     string
 		path       string
 		body       string
-		checkValue bool
 		result     string
+		checkValue bool
+		code       int
 	}{
 		{
 			code:       200,
@@ -95,7 +95,7 @@ func TestUpdateMetrics(t *testing.T) {
 			path:       "/value/",
 			body:       `{"id":"test_name","type":"gauge"}`,
 			checkValue: true,
-			result:     `{"id":"test_name","type":"gauge","value":20}`,
+			result:     `{"value":20,"id":"test_name","type":"gauge"}`,
 		},
 		{
 			code:       200,

@@ -17,11 +17,11 @@ const (
 
 type AgentConfig struct {
 	Endpoint       string
+	HashKey        string
+	Profiler       string
 	ReportInterval int
 	PoolInterval   int
-	HashKey        string
 	RateLimit      int
-	Profiler       string
 }
 
 func NewConfig() AgentConfig {
