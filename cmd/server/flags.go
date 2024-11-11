@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -28,52 +30,97 @@ type ServerConfig struct {
 	CryptoKey     string
 }
 
-func NewConfig() ServerConfig {
-	c := ServerConfig{}
+func NewDefaultConfig() ServerConfig {
+	c := ServerConfig{
+		Endpoint:      endpointDefault,
+		StoreFile:     storeFileDefault,
+		BaseDNS:       baseDSNDefault,
+		HashKey:       hashKeyDefault,
+		Profiler:      profilerDefault,
+		Restore:       restoreFlagDefault,
+		StoreInterval: storeIntervalDefault,
+		CryptoKey:     cryptoKeyDefault,
+	}
+	return c
+}
 
-	flag.StringVar(&c.Endpoint, "a", endpointDefault, "server endpoint")
-	flag.IntVar(&c.StoreInterval, "i", storeIntervalDefault, "store interval")
-	flag.StringVar(&c.StoreFile, "f", storeFileDefault, "store file")
-	flag.BoolVar(&c.Restore, "r", restoreFlagDefault, "restore metrics")
-	flag.StringVar(&c.BaseDNS, "d", baseDSNDefault, "data base dsn")
-	flag.StringVar(&c.HashKey, "k", hashKeyDefault, "hash key")
-	flag.StringVar(&c.Profiler, "p", profilerDefault, "profiler port")
-	flag.StringVar(&c.CryptoKey, "crypto-key", cryptoKeyDefault, "crypto key")
+func NewConfig() ServerConfig {
+
+	configPath := ""
+	flag.StringVar(&configPath, "c", getEnv("CONFIG", ""), "config path")
+
+	defaultConfig := NewDefaultConfig()
+	config, err := loadConfigFromFile(configPath)
+	if err != nil {
+		fmt.Println("config file read error", err)
+		config = &defaultConfig
+	}
+
+	flag.StringVar(&config.Endpoint, "a", config.Endpoint, "server endpoint")
+	flag.IntVar(&config.StoreInterval, "i", config.StoreInterval, "store interval")
+	flag.StringVar(&config.StoreFile, "f", config.StoreFile, "store file")
+	flag.BoolVar(&config.Restore, "r", config.Restore, "restore metrics")
+	flag.StringVar(&config.BaseDNS, "d", config.BaseDNS, "data base dsn")
+	flag.StringVar(&config.HashKey, "k", config.HashKey, "hash key")
+	flag.StringVar(&config.Profiler, "p", config.Profiler, "profiler port")
+	flag.StringVar(&config.CryptoKey, "crypto-key", config.CryptoKey, "crypto key")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
-		c.Endpoint = endpointEnv
+		config.Endpoint = endpointEnv
 	}
 
 	if storeIntervalEnv := os.Getenv("STORE_INTERVAL"); storeIntervalEnv != "" {
 		i, err := strconv.Atoi(storeIntervalEnv)
 		if err == nil {
-			c.StoreInterval = i
+			config.StoreInterval = i
 		}
 	}
 
 	if storeFileEnv := os.Getenv("FILE_STORAGE_PATH"); storeFileEnv != "" {
-		c.StoreFile = storeFileEnv
+		config.StoreFile = storeFileEnv
 	}
 
 	if restoreEnv := os.Getenv("RESTORE"); restoreEnv != "" {
 		restore, err := strconv.ParseBool(restoreEnv)
 		if err == nil {
-			c.Restore = restore
+			config.Restore = restore
 		}
 	}
 
 	if baseDSNEnv := os.Getenv("DATABASE_DSN"); baseDSNEnv != "" {
-		c.BaseDNS = baseDSNEnv
+		config.BaseDNS = baseDSNEnv
 	}
 
 	if hashKeyEnv := os.Getenv("KEY"); hashKeyEnv != "" {
-		c.HashKey = hashKeyEnv
+		config.HashKey = hashKeyEnv
 	}
 
 	if cryptoKeyEnv := os.Getenv("CRYPTO_KEY"); cryptoKeyEnv != "" {
-		c.CryptoKey = cryptoKeyEnv
+		config.CryptoKey = cryptoKeyEnv
 	}
 
-	return c
+	return *config
+}
+
+func loadConfigFromFile(filename string) (*ServerConfig, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	config := &ServerConfig{}
+	err = json.NewDecoder(file).Decode(config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func getEnv(key string, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }
