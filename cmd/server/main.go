@@ -114,7 +114,7 @@ func getSQLConnect(config ServerConfig) *sql.DB {
 
 func runGracefulShutdown(cancel context.CancelFunc) {
 	s := make(chan os.Signal, 1)
-	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		<-s
