@@ -11,11 +11,16 @@ import (
 )
 
 func main() {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
+	if err := createKeys(); err != nil {
 		log.Fatal(err)
 	}
+}
 
+func createKeys() error {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return err
+	}
 
 	// кодируем сертификат и ключ в формате PEM, который
 	// используется для хранения и обмена криптографическими ключами
@@ -26,11 +31,11 @@ func main() {
 	})
 	file, err := os.OpenFile("public_key.pem", os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	_, err = file.WriteString(publicKeyPEM.String())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var privateKeyPEM bytes.Buffer
@@ -40,10 +45,11 @@ func main() {
 	})
 	file, err = os.OpenFile("private_key.pem", os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	_, err = file.WriteString(privateKeyPEM.String())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

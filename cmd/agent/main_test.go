@@ -87,3 +87,7 @@ func TestNeedRetry(t *testing.T) {
 func TestShowBuildInfo(t *testing.T) {
 	showBuildInfo()
 }
+
+func TestLoadConfigFromFile(t *testing.T) {
+	loadConfigFromFile("config.json")
+}
