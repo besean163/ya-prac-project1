@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -13,26 +15,51 @@ const (
 	hashKeyDefault        = ""
 	rateLimitDefault      = 1
 	profilerDefault       = ""
+	cryptoKeyDefault      = ""
 )
 
 type AgentConfig struct {
-	Endpoint       string
+	Endpoint       string `json:"address"`
 	HashKey        string
 	Profiler       string
-	ReportInterval int
-	PoolInterval   int
+	ReportInterval int `json:"report_interval"`
+	PoolInterval   int `json:"poll_interval"`
 	RateLimit      int
+	CryptoKey      string `json:"crypto_keys"`
+}
+
+func NewDefaultConfig() AgentConfig {
+	c := AgentConfig{
+		Endpoint:       endpointDefault,
+		HashKey:        hashKeyDefault,
+		Profiler:       profilerDefault,
+		ReportInterval: reportIntervalDefault,
+		PoolInterval:   poolIntervalDefault,
+		RateLimit:      rateLimitDefault,
+		CryptoKey:      cryptoKeyDefault,
+	}
+	return c
 }
 
 func NewConfig() AgentConfig {
-	config := AgentConfig{}
+	configPath := ""
+	flag.StringVar(&configPath, "c", getEnv("CONFIG", ""), "config path")
 
-	flag.StringVar(&config.Endpoint, "a", endpointDefault, "server endpoint")
-	flag.IntVar(&config.ReportInterval, "r", reportIntervalDefault, "report interval sec")
-	flag.IntVar(&config.PoolInterval, "p", poolIntervalDefault, "metrics pool interval sec")
-	flag.StringVar(&config.HashKey, "k", hashKeyDefault, "hash key")
-	flag.IntVar(&config.RateLimit, "l", rateLimitDefault, "rate limit")
-	flag.StringVar(&config.Profiler, "profile", profilerDefault, "profiler port")
+	defaultConfig := NewDefaultConfig()
+	config, err := loadConfigFromFile(configPath)
+	if err != nil {
+		fmt.Println("config file read error", err)
+		config = &defaultConfig
+	}
+
+	flag.StringVar(&config.Endpoint, "a", config.Endpoint, "server endpoint")
+	flag.IntVar(&config.ReportInterval, "r", config.ReportInterval, "report interval sec")
+	flag.IntVar(&config.PoolInterval, "p", config.PoolInterval, "metrics pool interval sec")
+	flag.StringVar(&config.HashKey, "k", config.HashKey, "hash key")
+	flag.IntVar(&config.RateLimit, "l", config.RateLimit, "rate limit")
+	flag.StringVar(&config.Profiler, "profile", config.Profiler, "profiler port")
+	flag.StringVar(&config.CryptoKey, "crypto-key", config.CryptoKey, "crypto key")
+
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -64,5 +91,31 @@ func NewConfig() AgentConfig {
 		}
 	}
 
-	return config
+	if cryptoKeyEnv := os.Getenv("CRYPTO_KEY"); cryptoKeyEnv != "" {
+		config.CryptoKey = cryptoKeyEnv
+	}
+
+	return *config
+}
+
+func loadConfigFromFile(filename string) (*AgentConfig, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	config := &AgentConfig{}
+	err = json.NewDecoder(file).Decode(config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func getEnv(key string, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }

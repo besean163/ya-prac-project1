@@ -36,7 +36,7 @@ func TestUpdateMetrics(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, nil, "")
+	h := handlers.New(store, nil, "", "")
 
 	tests := []struct {
 		method     string
@@ -105,6 +105,21 @@ func TestUpdateMetrics(t *testing.T) {
 			checkValue: false,
 			result:     ``,
 		},
+		{
+			code:       500,
+			method:     http.MethodPost,
+			path:       "/updates/",
+			body:       `[{"id": "test_name","type": "gauge"}`,
+			checkValue: false,
+			result:     ``,
+		},
+		{
+			code:       500,
+			method:     http.MethodGet,
+			path:       "/ping",
+			checkValue: false,
+			result:     ``,
+		},
 	}
 
 	for _, test := range tests {
@@ -152,7 +167,7 @@ func TestGzipCompression(t *testing.T) {
 		},
 	}).AnyTimes()
 
-	h := handlers.New(store, nil, "")
+	h := handlers.New(store, nil, "", "")
 
 	valueResponse := "20"
 	t.Run("value", func(t *testing.T) {

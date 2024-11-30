@@ -53,7 +53,7 @@ func run(config ServerConfig) error {
 
 	metricService := services.NewMetricSaverService(store)
 
-	h := handlers.New(metricService, getSQLConnect(config), config.HashKey)
+	h := handlers.New(metricService, getSQLConnect(config), config.HashKey, config.CryptoKey)
 	h.Mount()
 
 	srv := &http.Server{
@@ -114,7 +114,7 @@ func getSQLConnect(config ServerConfig) *sql.DB {
 
 func runGracefulShutdown(cancel context.CancelFunc) {
 	s := make(chan os.Signal, 1)
-	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		<-s

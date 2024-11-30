@@ -5,13 +5,18 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/hmac"
+	random "crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 	"ya-prac-project1/internal/logger"
@@ -91,7 +96,7 @@ func getRandomValueMetirc() (metrics.Metrics, error) {
 	return m, nil
 }
 
-func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndpoint string, key string) {
+func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndpoint string, key string, cryptoKey string) {
 	metrics := s.storage.GetMetrics()
 
 	b, err := json.Marshal(metrics)
@@ -101,6 +106,7 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 	}
 
 	var buf bytes.Buffer
+
 	gw := gzip.NewWriter(&buf)
 	if _, err = gw.Write(b); err != nil {
 		log.Printf("compress error. Error: %s\n", err)
@@ -108,6 +114,7 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 	}
 	gw.Close()
 
+	buf = encryptMessage(buf, cryptoKey)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/updates/", serverEndpoint), &buf)
 	if err != nil {
 		fmt.Printf("can't create request. Error: %s\n", err)
@@ -120,6 +127,7 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 		sign := hex.EncodeToString(h.Sum(nil))
 		req.Header.Set("HashSHA256", sign)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	requestCh <- req
@@ -186,4 +194,36 @@ func getRuntimeMetrics() []metrics.Metrics {
 	}
 
 	return items
+}
+
+func encryptMessage(buf bytes.Buffer, cryptoKey string) bytes.Buffer {
+	if cryptoKey == "" {
+		return buf
+	}
+
+	pubKeyBytes, err := os.ReadFile(cryptoKey)
+	if err != nil {
+		fmt.Printf("can't read public key. Error: %s\n", err)
+		return buf
+	}
+
+	block, _ := pem.Decode(pubKeyBytes)
+	if block == nil || block.Type != "RSA PUBLIC KEY" {
+		fmt.Printf("failed to decode PEM block containing public key")
+		return buf
+	}
+
+	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		fmt.Printf("can't parse public key. Error: %s\n", err)
+		return buf
+	}
+
+	encryptedMessage, err := rsa.EncryptPKCS1v15(random.Reader, publicKey, buf.Bytes())
+	if err != nil {
+		fmt.Printf("can't encrypt message")
+		return buf
+	}
+
+	return *bytes.NewBuffer(encryptedMessage)
 }

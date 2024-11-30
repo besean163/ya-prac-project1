@@ -75,7 +75,7 @@ func main() {
 					log.Printf("send request stopped")
 					return nil
 				case <-ticker.C:
-					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey)
+					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey, c.CryptoKey)
 				}
 			}
 		}
@@ -155,7 +155,7 @@ func needRetry(err error) bool {
 
 func runGracefulShutdown(cancel context.CancelFunc) {
 	s := make(chan os.Signal, 1)
-	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		<-s

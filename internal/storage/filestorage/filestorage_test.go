@@ -17,3 +17,13 @@ func TestNewStorage(t *testing.T) {
 	// чтобы воркеры внутри успели запуститься
 	time.Sleep(time.Millisecond * 100)
 }
+
+func TestNewStorage2(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s, _ := NewStorage(ctx, "test", true, 1)
+
+	assert.Equal(t, "test", s.FilePath)
+	// чтобы воркеры внутри успели запуститься
+	time.Sleep(time.Millisecond * 100)
+}

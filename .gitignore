@@ -27,6 +27,6 @@ vendor/
 some
 *store_metrics
 cmd/test
-internal/storage/filestorage/test
 cmd/staticlint/staticlint
+/certificates
 

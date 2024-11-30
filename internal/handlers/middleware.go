@@ -3,10 +3,16 @@ package handlers
 import (
 	"bytes"
 	"crypto/hmac"
+	random "crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 	"ya-prac-project1/internal/logger"
@@ -63,6 +69,7 @@ func zipMiddleware(h http.Handler) http.Handler {
 		if sendGzip && (contentType == "application/json" || contentType == "text/html") {
 			cr, err := newZipReader(r.Body)
 			if err != nil {
+				logger.Get().Info("reader create error", zap.String("error", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -96,4 +103,54 @@ func hashKeyMiddleware(h http.Handler, key string) http.Handler {
 		hw := NewHashResponseWriter(w, key)
 		h.ServeHTTP(hw, r)
 	})
+}
+
+func cryptoKeyMiddleware(h http.Handler, key string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if key == "" {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		var bodyBytes []byte
+		if r.Body != nil {
+			bodyBytes, _ = io.ReadAll(r.Body)
+			bodyBytes = decryptMessage(bodyBytes, key)
+		}
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+func decryptMessage(buf []byte, cryptoKey string) []byte {
+	if cryptoKey == "" {
+		return buf
+	}
+
+	privKeyBytes, err := os.ReadFile(cryptoKey)
+	if err != nil {
+		fmt.Printf("can't read private key. Error: %s\n", err)
+		return buf
+	}
+
+	block, _ := pem.Decode(privKeyBytes)
+	if block == nil || block.Type != "RSA PRIVATE KEY" {
+		fmt.Printf("failed to decode PEM block containing private key")
+		return buf
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Printf("can't parse private key. Error: %s\n", err)
+		return buf
+	}
+
+	decryptedMessage, err := rsa.DecryptPKCS1v15(random.Reader, privateKey, buf)
+	if err != nil {
+		fmt.Printf("can't encrypt message")
+		return buf
+	}
+
+	return decryptedMessage
 }
