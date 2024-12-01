@@ -53,7 +53,7 @@ func run(config ServerConfig) error {
 
 	metricService := services.NewMetricSaverService(store)
 
-	h := handlers.New(metricService, getSQLConnect(config), config.HashKey, config.CryptoKey)
+	h := handlers.New(metricService, getSQLConnect(config), config.HashKey, config.CryptoKey, config.TrustedSubnet)
 	h.Mount()
 
 	srv := &http.Server{

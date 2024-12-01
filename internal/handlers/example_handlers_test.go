@@ -20,7 +20,7 @@ func ExampleServerHandler_GetMetrics() {
 	})
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 
@@ -41,7 +41,7 @@ func ExampleServerHandler_GetMetrics_second() {
 	})
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	req, _ := http.NewRequest(http.MethodGet, "/value/gauge/testname", nil)
 	rr := httptest.NewRecorder()
 
@@ -62,7 +62,7 @@ func ExampleServerHandler_GetMetrics_third() {
 	})
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	body := bytes.NewReader([]byte(`{"id":"testname","type":"gauge"}`))
 	req, _ := http.NewRequest(http.MethodPost, "/value/", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -82,7 +82,7 @@ func ExampleServerHandler_UpdateMetrics() {
 	storage := inmemstorage.NewStorage()
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	h.Mount()
 
 	req, _ := http.NewRequest(http.MethodPost, "/update/gauge/testname/20", nil)
@@ -103,7 +103,7 @@ func ExampleServerHandler_UpdateMetrics_second() {
 	storage := inmemstorage.NewStorage()
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	h.Mount()
 
 	body := bytes.NewReader([]byte(`{"id": "testname","type": "gauge","value": 20}`))
@@ -126,7 +126,7 @@ func ExampleServerHandler_UpdateBatchMetrics_second() {
 	storage := inmemstorage.NewStorage()
 	service := services.NewMetricSaverService(storage)
 	logger.Set()
-	h := handlers.New(service, nil, "", "")
+	h := handlers.New(service, nil, "", "", "")
 	h.Mount()
 
 	body := bytes.NewReader([]byte(`[{"id": "testname","type": "gauge","value": 20},{"id": "testname2","type": "gauge","value": 30}]`))
