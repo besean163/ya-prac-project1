@@ -55,7 +55,6 @@ func run(config ServerConfig) error {
 	}
 
 	metricService := services.NewMetricSaverService(store)
-	fmt.Println(config.GRPCEndpoint)
 
 	RungRPCServer(ctx, config.GRPCEndpoint, metricService)
 

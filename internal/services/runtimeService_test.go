@@ -88,6 +88,17 @@ func TestRunSendRequest2(t *testing.T) {
 	<-rCh
 }
 
+func TestRunSendgRPCRequest_1(t *testing.T) {
+	logger.Set()
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{}).AnyTimes()
+
+	s := NewRuntimeService(store)
+	s.RunSendgRPCRequest("")
+}
+
 func TestEncryptMessage(t *testing.T) {
 	encryptMessage(*bytes.NewBuffer([]byte{}), "")
 }

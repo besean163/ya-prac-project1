@@ -1,10 +1,14 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 	mock "ya-prac-project1/internal/services/mocks"
+
+	pb "ya-prac-project1/internal/services/proto"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -189,4 +193,165 @@ func BenchmarkGetMetric(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s.GetMetric(metrics.MetricTypeGauge, "test_10")
 	}
+}
+
+func TestUpdateMetrics(t *testing.T) {
+	logger.Set()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Создаем мок для SaveStorage
+	mockStorage := mock.NewMockSaveStorage(ctrl)
+
+	// Инициализируем сервис через конструктор
+	service := NewMetricSaverService(mockStorage)
+
+	// Пример входных данных для тестов
+	in := &pb.SaveMetricsRequest{
+		Metrics: []*pb.Metric{
+			{
+				Id:    "metric1",
+				Type:  "counter",
+				Value: new(float64), // Указатель на float64
+			},
+			{
+				Id:    "metric2",
+				Type:  "gauge",
+				Delta: new(int64), // Указатель на int64
+			},
+		},
+	}
+
+	t.Run("successful update", func(t *testing.T) {
+		// Ожидания для вызовов зависимостей
+		mockStorage.EXPECT().GetMetrics().Return([]metrics.Metrics{}).Times(1)
+		mockStorage.EXPECT().CreateMetrics(gomock.Any()).Return(nil).Times(1)
+
+		// Выполняем тест
+		resp, err := service.UpdateMetrics(context.Background(), in)
+
+		// Проверяем результат
+		assert.NoError(t, err)
+		assert.Empty(t, resp.Error)
+	})
+
+	t.Run("create metrics error", func(t *testing.T) {
+		// Ожидаем ошибку при создании метрик
+		mockStorage.EXPECT().GetMetrics().Return([]metrics.Metrics{}).Times(1)
+		mockStorage.EXPECT().CreateMetrics(gomock.Any()).Return(assert.AnError).Times(1)
+
+		// Выполняем тест
+		resp, err := service.UpdateMetrics(context.Background(), in)
+
+		// Проверяем, что ошибка вернулась
+		assert.Error(t, err)
+		assert.Equal(t, assert.AnError.Error(), resp.Error)
+	})
+
+	t.Run("update metrics error", func(t *testing.T) {
+		// Подготовка существующих метрик
+		existingMetrics := []metrics.Metrics{
+			{ID: "metric1", MType: "counter"},
+		}
+		mockStorage.EXPECT().GetMetrics().Return(existingMetrics).Times(1)
+
+		// Выполняем тест
+		_, err := service.UpdateMetrics(context.Background(), in)
+
+		// Проверяем, что ошибка вернулась
+		assert.Error(t, err)
+	})
+
+	t.Run("validation error", func(t *testing.T) {
+		// Создаем некорректный запрос
+		invalidRequest := &pb.SaveMetricsRequest{
+			Metrics: []*pb.Metric{
+				{
+					Id:   "invalid_metric",
+					Type: "unknown_type", // Некорректный тип метрики
+				},
+			},
+		}
+
+		// Не ожидается вызов CreateMetrics или UpdateMetrics
+		mockStorage.EXPECT().GetMetrics().Return([]metrics.Metrics{}).Times(1)
+
+		// Выполняем тест
+		_, err := service.UpdateMetrics(context.Background(), invalidRequest)
+
+		// Проверяем результат
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "wrong metric type") // Убедитесь, что валидация отрабатывает
+	})
+}
+
+func TestPBMetricReset(t *testing.T) {
+	metric := pb.Metric{}
+	metric.Reset()
+}
+
+func TestPBMetricString(t *testing.T) {
+	metric := pb.Metric{}
+	_ = metric.String()
+}
+
+func TestPBMetricProtoMessage(t *testing.T) {
+	metric := pb.Metric{}
+	metric.ProtoMessage()
+}
+
+func TestPBMetricGetDelta(t *testing.T) {
+	metric := pb.Metric{}
+	_ = metric.GetDelta()
+}
+func TestPBMetricGetValue(t *testing.T) {
+	metric := pb.Metric{}
+	_ = metric.GetValue()
+}
+
+func TestPBMetricGetId(t *testing.T) {
+	var metric pb.Metric
+	_ = metric.GetId()
+	metric = pb.Metric{}
+	_ = metric.GetId()
+}
+
+func TestPBMetricGetType(t *testing.T) {
+	metric := pb.Metric{}
+	_ = metric.GetType()
+}
+
+func TestPBSaveMetricsRequestReset(t *testing.T) {
+	r := pb.SaveMetricsRequest{}
+	r.Reset()
+}
+
+func TestPBSaveMetricsRequestString(t *testing.T) {
+	r := pb.SaveMetricsRequest{}
+	_ = r.String()
+}
+
+// func TestPBSaveMetricsRequestProtoMessage(t *testing.T) {
+// 	r := pb.SaveMetricsRequest{}
+// 	r.ProtoMessage()
+// }
+
+func TestPBSaveMetricsRequestGetMetrics(t *testing.T) {
+	r := pb.SaveMetricsRequest{}
+	_ = r.GetMetrics()
+}
+
+func SaveMetricsResponseReset(t *testing.T) {
+	r := &pb.SaveMetricsResponse{}
+	r.Reset()
+}
+
+func SaveMetricsResponseString(t *testing.T) {
+	r := pb.SaveMetricsResponse{}
+	_ = r.String()
+}
+
+func SaveMetricsResponseProtoMessage(t *testing.T) {
+	r := pb.SaveMetricsResponse{}
+	r.ProtoMessage()
 }

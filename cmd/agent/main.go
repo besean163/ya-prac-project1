@@ -32,6 +32,10 @@ const (
 	waitSecIncrement = 2
 )
 
+type HTTPClientInterface interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
 func main() {
 	showBuildInfo()
 	err := logger.Set()
@@ -55,7 +59,8 @@ func main() {
 
 	for count := 0; count < c.RateLimit; count++ {
 		errGroup.Go(func() error {
-			worker(gCtx, requestCh, requestDone)
+			client := &http.Client{}
+			worker(gCtx, requestCh, requestDone, client)
 			return nil
 		})
 	}
@@ -89,14 +94,14 @@ func main() {
 	log.Printf("full stopped")
 }
 
-func worker(ctx context.Context, requestCh chan *http.Request, requestDone chan struct{}) {
+func worker(ctx context.Context, requestCh chan *http.Request, requestDone chan struct{}, client HTTPClientInterface) {
 	for {
 		select {
 		case <-ctx.Done():
 			fmt.Println("worker stopped")
 			return
 		case req := <-requestCh:
-			client := http.Client{}
+			// client := http.Client{}
 			var err error
 
 			response, err := client.Do(req)

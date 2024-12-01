@@ -156,8 +156,8 @@ func getRetryFunc(attempts, waitDelta int) func(err error) bool {
 			return false
 		}
 
-		pgError := pgx.PgError{}
-		if errors.Is(err, &pgError) && pgerrcode.IsConnectionException(pgError.Code) {
+		var pgError *pgx.PgError
+		if errors.As(err, &pgError) && pgerrcode.IsConnectionException(pgError.Code) {
 			time.Sleep(time.Duration(1+secDelta) * time.Second)
 			secDelta += waitDelta
 			return attempt <= attempts
