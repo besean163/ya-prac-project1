@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -128,6 +129,12 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 		req.Header.Set("HashSHA256", sign)
 	}
 
+	cIP, err := getCurrentIP()
+	if err != nil {
+		logger.Get().Info("can't create request. Error: %s\n", zap.String("error", err.Error()))
+		return
+	}
+	req.Header.Set("X-Real-IP", cIP)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	requestCh <- req
@@ -226,4 +233,37 @@ func encryptMessage(buf bytes.Buffer, cryptoKey string) bytes.Buffer {
 	}
 
 	return *bytes.NewBuffer(encryptedMessage)
+}
+
+func getCurrentIP() (string, error) {
+	// Получаем список всех сетевых интерфейсов
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("error getting network interfaces: %v", err)
+	}
+
+	// Проходим по интерфейсам и находим IPv4-адрес
+	for _, iface := range interfaces {
+		// Пропускаем интерфейсы, которые не активны
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		// Получаем адреса интерфейса
+		addrs, err := iface.Addrs()
+		if err != nil {
+			log.Printf("Error getting addresses for interface %v: %v", iface.Name, err)
+			continue
+		}
+
+		// Проходим по адресам
+		for _, addr := range addrs {
+			// Проверяем, что это IPv4-адрес
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no active IPv4 interface found")
 }

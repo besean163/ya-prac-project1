@@ -17,17 +17,19 @@ const (
 	hashKeyDefault       = ""
 	profilerDefault      = ""
 	cryptoKeyDefault     = ""
+	trustedSubnetDefault = ""
 )
 
 type ServerConfig struct {
-	Endpoint      string
-	StoreFile     string
-	BaseDNS       string
+	Endpoint      string `json:"address"`
+	StoreFile     string `json:"store_file"`
+	BaseDNS       string `json:"database_dsn"`
 	HashKey       string
 	Profiler      string
-	Restore       bool
-	StoreInterval int
+	Restore       bool `json:"restore"`
+	StoreInterval int  `json:"store_interval"`
 	CryptoKey     string
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 func NewDefaultConfig() ServerConfig {
@@ -40,6 +42,7 @@ func NewDefaultConfig() ServerConfig {
 		Restore:       restoreFlagDefault,
 		StoreInterval: storeIntervalDefault,
 		CryptoKey:     cryptoKeyDefault,
+		TrustedSubnet: trustedSubnetDefault,
 	}
 	return c
 }
@@ -64,6 +67,7 @@ func NewConfig() ServerConfig {
 	flag.StringVar(&config.HashKey, "k", config.HashKey, "hash key")
 	flag.StringVar(&config.Profiler, "p", config.Profiler, "profiler port")
 	flag.StringVar(&config.CryptoKey, "crypto-key", config.CryptoKey, "crypto key")
+	flag.StringVar(&config.TrustedSubnet, "t", config.TrustedSubnet, "trusted subnet")
 	flag.Parse()
 
 	if endpointEnv := os.Getenv("ADDRESS"); endpointEnv != "" {
@@ -100,12 +104,17 @@ func NewConfig() ServerConfig {
 		config.CryptoKey = cryptoKeyEnv
 	}
 
+	if trustedSubnetEnv := os.Getenv("TRUSTED_SUBNET"); trustedSubnetEnv != "" {
+		config.TrustedSubnet = trustedSubnetEnv
+	}
+
 	return *config
 }
 
 func loadConfigFromFile(filename string) (*ServerConfig, error) {
 	file, err := os.Open(filename)
 	if err != nil {
+		fmt.Println(filename)
 		return nil, err
 	}
 	defer file.Close()
