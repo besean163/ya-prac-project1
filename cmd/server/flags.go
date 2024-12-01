@@ -10,6 +10,7 @@ import (
 
 const (
 	endpointDefault      = "localhost:8080"
+	endpointgRPCDefault  = ":8088"
 	storeIntervalDefault = 300
 	storeFileDefault     = "store_metrics"
 	restoreFlagDefault   = true
@@ -22,6 +23,7 @@ const (
 
 type ServerConfig struct {
 	Endpoint      string `json:"address"`
+	GRPCEndpoint  string `json:"grpc_address"`
 	StoreFile     string `json:"store_file"`
 	BaseDNS       string `json:"database_dsn"`
 	HashKey       string
@@ -35,6 +37,7 @@ type ServerConfig struct {
 func NewDefaultConfig() ServerConfig {
 	c := ServerConfig{
 		Endpoint:      endpointDefault,
+		GRPCEndpoint:  endpointgRPCDefault,
 		StoreFile:     storeFileDefault,
 		BaseDNS:       baseDSNDefault,
 		HashKey:       hashKeyDefault,
@@ -58,6 +61,7 @@ func NewConfig() ServerConfig {
 		fmt.Println("config file read error", err)
 		config = &defaultConfig
 	}
+	config.GRPCEndpoint = endpointgRPCDefault
 
 	flag.StringVar(&config.Endpoint, "a", config.Endpoint, "server endpoint")
 	flag.IntVar(&config.StoreInterval, "i", config.StoreInterval, "store interval")

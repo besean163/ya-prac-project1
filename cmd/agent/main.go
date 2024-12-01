@@ -76,6 +76,7 @@ func main() {
 					return nil
 				case <-ticker.C:
 					service.RunSendRequest(requestCh, c.Endpoint, c.HashKey, c.CryptoKey)
+					service.RunSendgRPCRequest(c.GRPCEndpoint)
 				}
 			}
 		}

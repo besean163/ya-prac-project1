@@ -23,9 +23,13 @@ import (
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 
+	pb "ya-prac-project1/internal/services/proto"
+
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Storage структура представляющая интерфейс репозитория для работы с сервисом RuntimeService
@@ -138,6 +142,44 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	requestCh <- req
+}
+
+func (s *RuntimeService) RunSendgRPCRequest(serverEndpoint string) {
+	metrics := s.storage.GetMetrics()
+
+	targetMetrics := make([]*pb.Metric, 0)
+	for _, m := range metrics {
+		tm := pb.Metric{
+			Type: m.MType,
+			Id:   m.ID,
+		}
+		if m.Value != nil {
+			tm.Value = m.Value
+		}
+		if m.Delta != nil {
+			tm.Delta = m.Delta
+		}
+		targetMetrics = append(targetMetrics, &tm)
+	}
+
+	conn, err := grpc.NewClient(serverEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	c := pb.NewMetricSaverServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	var request pb.SaveMetricsRequest
+	request.Metrics = targetMetrics
+	_, err = c.UpdateMetrics(ctx, &request)
+	if err != nil {
+		logger.Get().Info("fail send grps reauest", zap.String("error", err.Error()))
+	}
+
 }
 
 func getRuntimeMetrics() []metrics.Metrics {

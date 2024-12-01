@@ -10,6 +10,7 @@ import (
 
 const (
 	endpointDefault       = "localhost:8080"
+	endpointgRPCDefault   = ":8088"
 	reportIntervalDefault = 2
 	poolIntervalDefault   = 1
 	hashKeyDefault        = ""
@@ -20,6 +21,7 @@ const (
 
 type AgentConfig struct {
 	Endpoint       string `json:"address"`
+	GRPCEndpoint   string `json:"grpc_address"`
 	HashKey        string
 	Profiler       string
 	ReportInterval int `json:"report_interval"`
@@ -31,6 +33,7 @@ type AgentConfig struct {
 func NewDefaultConfig() AgentConfig {
 	c := AgentConfig{
 		Endpoint:       endpointDefault,
+		GRPCEndpoint:   endpointgRPCDefault,
 		HashKey:        hashKeyDefault,
 		Profiler:       profilerDefault,
 		ReportInterval: reportIntervalDefault,
