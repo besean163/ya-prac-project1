@@ -60,26 +60,31 @@ func (s *Storage) GetMetrics() []metrics.Metrics {
 		)
 	}
 
-	defer rows.Close()
-	for rows.Next() {
-		var metric metrics.Metrics
-		err := rows.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
-		if err != nil {
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var metric metrics.Metrics
+			err := rows.Scan(&metric.MType, &metric.ID, &metric.Value, &metric.Delta)
+			if err != nil {
+				logger.Get().Info(
+					"parse metric error",
+					zap.String("error", err.Error()),
+				)
+			}
+			items = append(items, metric)
+		}
+
+		if rows.Err() != nil {
 			logger.Get().Info(
-				"parse metric error",
-				zap.String("error", err.Error()),
+				"rows error",
+				zap.String("error", rows.Err().Error()),
 			)
 		}
-		items = append(items, metric)
 	}
 
-	if rows.Err() != nil {
-		logger.Get().Info(
-			"rows error",
-			zap.String("error", rows.Err().Error()),
-		)
+	if items == nil {
+		logger.Get().Info("nil!!!")
 	}
-
 	return items
 }
 
