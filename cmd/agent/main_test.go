@@ -230,6 +230,10 @@ func TestRunProfiler(t *testing.T) {
 
 		// Проверяем, что сервер слушает на порту
 		resp, err := http.Get("http://localhost:" + port)
+		if resp != nil {
+			resp.Body.Close()
+		}
+
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 	})

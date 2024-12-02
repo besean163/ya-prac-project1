@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -89,6 +88,7 @@ func TestZipMiddleware_GzipCompression(t *testing.T) {
 
 	// Get the response and check the Content-Encoding header
 	resp := rr.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
 
@@ -135,6 +135,8 @@ func TestZipMiddleware_GzipDecompression(t *testing.T) {
 
 	// Check the response status code
 	resp := rr.Result()
+	defer resp.Body.Close()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
@@ -177,6 +179,8 @@ func TestZipMiddleware_NoCompressionRequired(t *testing.T) {
 
 	// Assert the response is normal without content encoding header
 	resp := rr.Result()
+	defer resp.Body.Close()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Empty(t, resp.Header.Get("Content-Encoding"))
 }
@@ -219,7 +223,7 @@ func TestZipWriterClose(t *testing.T) {
 	defer gzipReader.Close()
 
 	// Читаем данные из gzip-архива
-	decodedData, err := ioutil.ReadAll(gzipReader)
+	decodedData, err := io.ReadAll(gzipReader)
 	if err != nil {
 		t.Fatalf("unexpected error reading from gzip reader: %v", err)
 	}
@@ -271,7 +275,7 @@ func TestZipReaderClose(t *testing.T) {
 	}
 
 	// Читаем данные из zipReader
-	decodedData, err := ioutil.ReadAll(zipR)
+	decodedData, err := io.ReadAll(zipR)
 	if err != nil {
 		t.Fatalf("unexpected error reading from zip reader: %v", err)
 	}

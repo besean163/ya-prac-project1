@@ -92,7 +92,7 @@ func TestRungRPCServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 2)
 		cancel()
 	}()
 

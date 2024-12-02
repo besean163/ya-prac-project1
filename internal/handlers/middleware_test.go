@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -211,7 +210,7 @@ func generateRSAKey(t *testing.T) string {
 	}
 
 	// Write private key to temp file
-	privKeyFile, err := ioutil.TempFile("", "private_key_")
+	privKeyFile, err := os.CreateTemp("", "private_key_")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
@@ -250,7 +249,7 @@ func TestDecryptMessage_ValidKey(t *testing.T) {
 	defer os.Remove(cryptoKey) // Cleanup after test
 
 	// Generate public key for encryption
-	privKeyBytes, err := ioutil.ReadFile(cryptoKey)
+	privKeyBytes, err := os.ReadFile(cryptoKey)
 	if err != nil {
 		t.Fatalf("can't read private key: %v", err)
 	}
@@ -295,7 +294,7 @@ func TestDecryptMessage_InvalidKeyFile(t *testing.T) {
 // Test decryptMessage with an invalid key format
 func TestDecryptMessage_InvalidKeyFormat(t *testing.T) {
 	// Create a temp file with invalid key content
-	invalidKeyFile, err := ioutil.TempFile("", "invalid_key_")
+	invalidKeyFile, err := os.CreateTemp("", "invalid_key_")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
