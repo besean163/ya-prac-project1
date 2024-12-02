@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,8 +19,10 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 
 	_ "net/http/pprof"
+	pb "ya-prac-project1/internal/services/proto"
 )
 
 var (
@@ -53,7 +56,9 @@ func run(config ServerConfig) error {
 
 	metricService := services.NewMetricSaverService(store)
 
-	h := handlers.New(metricService, getSQLConnect(config), config.HashKey, config.CryptoKey)
+	RungRPCServer(ctx, config.GRPCEndpoint, metricService)
+
+	h := handlers.New(metricService, getSQLConnect(config), config.HashKey, config.CryptoKey, config.TrustedSubnet)
 	h.Mount()
 
 	srv := &http.Server{
@@ -164,4 +169,22 @@ func showBuildInfo() {
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
+}
+
+func RungRPCServer(ctx context.Context, port string, ms pb.MetricSaverServiceServer) {
+	server := grpc.NewServer()
+	listen, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatal(err)
+	}
+	pb.RegisterMetricSaverServiceServer(server, ms)
+
+	go func() {
+		server.Serve(listen)
+	}()
+
+	go func() {
+		<-ctx.Done()
+		server.GracefulStop()
+	}()
 }

@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -153,4 +154,42 @@ func decryptMessage(buf []byte, cryptoKey string) []byte {
 	}
 
 	return decryptedMessage
+}
+
+func allowedIPMiddleware(h http.Handler, trusted string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if trusted != "" {
+			clientIP := r.Header.Get("X-Real-IP")
+			if clientIP == "" {
+				http.Error(w, "Missing X-Real-IP header", http.StatusBadRequest)
+				return
+			}
+
+			// Проверяем, разрешен ли этот IP
+			if !isIPAllowed(clientIP, trusted) {
+				http.Error(w, "Forbidden: IP not allowed", http.StatusForbidden)
+				return
+			}
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+func isIPAllowed(ip, trusted string) bool {
+
+	// Проверяем, входит ли IP в доверенную подсеть
+	_, cidrNet, err := net.ParseCIDR(trusted)
+	if err != nil {
+		fmt.Println("Error parsing trusted subnet:", err)
+		return false
+	}
+
+	clientIP := net.ParseIP(ip)
+	if clientIP == nil {
+		fmt.Println("Error parsing client IP:", ip)
+		return false
+	}
+
+	return cidrNet.Contains(clientIP)
 }

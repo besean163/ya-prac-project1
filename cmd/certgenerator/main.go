@@ -25,10 +25,13 @@ func createKeys() error {
 	// кодируем сертификат и ключ в формате PEM, который
 	// используется для хранения и обмена криптографическими ключами
 	var publicKeyPEM bytes.Buffer
-	pem.Encode(&publicKeyPEM, &pem.Block{
+	err = pem.Encode(&publicKeyPEM, &pem.Block{
 		Type:  "RSA PUBLIC KEY",
 		Bytes: x509.MarshalPKCS1PublicKey(&privateKey.PublicKey),
 	})
+	if err != nil {
+		return err
+	}
 	file, err := os.OpenFile("public_key.pem", os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
 		return err
@@ -39,10 +42,13 @@ func createKeys() error {
 	}
 
 	var privateKeyPEM bytes.Buffer
-	pem.Encode(&privateKeyPEM, &pem.Block{
+	err = pem.Encode(&privateKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
+	if err != nil {
+		return err
+	}
 	file, err = os.OpenFile("private_key.pem", os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
 		return err

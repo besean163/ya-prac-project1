@@ -87,3 +87,46 @@ func TestShowBuildInfo(t *testing.T) {
 func TestLoadConfigFromFile(t *testing.T) {
 	loadConfigFromFile("config.json")
 }
+
+func TestRungRPCServer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		time.Sleep(time.Second * 2)
+		cancel()
+	}()
+
+	RungRPCServer(ctx, ":8888", nil)
+}
+
+func TestGetEnv(t *testing.T) {
+	// Определяем переменные для тестов
+	key := "TEST_KEY"
+	fallback := "default_value"
+
+	t.Run("Environment variable exists", func(t *testing.T) {
+		// Устанавливаем переменную окружения
+		expectedValue := "env_value"
+		if err := os.Setenv(key, expectedValue); err != nil {
+			t.Fatalf("Failed to set environment variable: %v", err)
+		}
+		defer os.Unsetenv(key) // Очищаем переменную после теста
+
+		// Проверяем результат
+		value := getEnv(key, fallback)
+		if value != expectedValue {
+			t.Errorf("Expected %s, got %s", expectedValue, value)
+		}
+	})
+
+	t.Run("Environment variable does not exist", func(t *testing.T) {
+		// Убедимся, что переменной окружения нет
+		os.Unsetenv(key)
+
+		// Проверяем результат
+		value := getEnv(key, fallback)
+		if value != fallback {
+			t.Errorf("Expected fallback value %s, got %s", fallback, value)
+		}
+	})
+}

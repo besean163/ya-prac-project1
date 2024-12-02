@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -22,9 +23,13 @@ import (
 	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
 
+	pb "ya-prac-project1/internal/services/proto"
+
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Storage структура представляющая интерфейс репозитория для работы с сервисом RuntimeService
@@ -128,9 +133,53 @@ func (s *RuntimeService) RunSendRequest(requestCh chan *http.Request, serverEndp
 		req.Header.Set("HashSHA256", sign)
 	}
 
+	cIP, err := getCurrentIP()
+	if err != nil {
+		logger.Get().Info("can't create request. Error: %s\n", zap.String("error", err.Error()))
+		return
+	}
+	req.Header.Set("X-Real-IP", cIP)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	requestCh <- req
+}
+
+func (s *RuntimeService) RunSendgRPCRequest(serverEndpoint string) {
+	metrics := s.storage.GetMetrics()
+
+	targetMetrics := make([]*pb.Metric, 0)
+	for _, m := range metrics {
+		tm := pb.Metric{
+			Type: m.MType,
+			Id:   m.ID,
+		}
+		if m.Value != nil {
+			tm.Value = m.Value
+		}
+		if m.Delta != nil {
+			tm.Delta = m.Delta
+		}
+		targetMetrics = append(targetMetrics, &tm)
+	}
+
+	conn, err := grpc.NewClient(serverEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	c := pb.NewMetricSaverServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	var request pb.SaveMetricsRequest
+	request.Metrics = targetMetrics
+	_, err = c.UpdateMetrics(ctx, &request)
+	if err != nil {
+		logger.Get().Info("fail send grps reauest", zap.String("error", err.Error()))
+	}
+
 }
 
 func getRuntimeMetrics() []metrics.Metrics {
@@ -226,4 +275,37 @@ func encryptMessage(buf bytes.Buffer, cryptoKey string) bytes.Buffer {
 	}
 
 	return *bytes.NewBuffer(encryptedMessage)
+}
+
+func getCurrentIP() (string, error) {
+	// Получаем список всех сетевых интерфейсов
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("error getting network interfaces: %v", err)
+	}
+
+	// Проходим по интерфейсам и находим IPv4-адрес
+	for _, iface := range interfaces {
+		// Пропускаем интерфейсы, которые не активны
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		// Получаем адреса интерфейса
+		addrs, err := iface.Addrs()
+		if err != nil {
+			log.Printf("Error getting addresses for interface %v: %v", iface.Name, err)
+			continue
+		}
+
+		// Проходим по адресам
+		for _, addr := range addrs {
+			// Проверяем, что это IPv4-адрес
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no active IPv4 interface found")
 }

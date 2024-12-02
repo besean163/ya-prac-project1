@@ -3,7 +3,12 @@ package services
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 	"ya-prac-project1/internal/logger"
@@ -88,13 +93,182 @@ func TestRunSendRequest2(t *testing.T) {
 	<-rCh
 }
 
-func TestEncryptMessage(t *testing.T) {
-	encryptMessage(*bytes.NewBuffer([]byte{}), "")
-}
-func TestEncryptMessage2(t *testing.T) {
-	encryptMessage(*bytes.NewBuffer([]byte{}), "testdata/public.pem")
+func TestRunSendgRPCRequest_1(t *testing.T) {
+	logger.Set()
+	ctrl := gomock.NewController(t)
+	store := mock.NewMockStorage(ctrl)
+
+	store.EXPECT().GetMetrics().Return([]metrics.Metrics{}).AnyTimes()
+
+	s := NewRuntimeService(store)
+	s.RunSendgRPCRequest("")
 }
 
-func TestEncryptMessage3(t *testing.T) {
-	encryptMessage(*bytes.NewBuffer([]byte{}), "testdata/wrong_public.pem")
+// func TestEncryptMessage(t *testing.T) {
+// 	encryptMessage(*bytes.NewBuffer([]byte{}), "")
+// }
+// func TestEncryptMessage2(t *testing.T) {
+// 	encryptMessage(*bytes.NewBuffer([]byte{}), "testdata/public.pem")
+// }
+
+// func TestEncryptMessage3(t *testing.T) {
+// 	encryptMessage(*bytes.NewBuffer([]byte{}), "testdata/wrong_public.pem")
+// }
+
+func TestEncryptMessage_NoCryptoKey(t *testing.T) {
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию с пустым ключом
+	output := encryptMessage(*input, "")
+
+	// Проверяем, что выходной буфер идентичен входному
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_ReadKeyError(t *testing.T) {
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию с несуществующим ключом
+	output := encryptMessage(*input, "/nonexistent/path/to/key")
+
+	// Проверяем, что выходной буфер идентичен входному
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_InvalidPEMBlock(t *testing.T) {
+	// Создаем временный файл с некорректным PEM-блоком
+	tempFile, err := os.CreateTemp("", "invalid_pem")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString("INVALID PEM BLOCK")
+	assert.NoError(t, err)
+
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию
+	output := encryptMessage(*input, tempFile.Name())
+
+	// Проверяем, что выходной буфер идентичен входному
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_NonRSAPublicKey(t *testing.T) {
+	// Создаем временный файл с некорректным типом ключа
+	tempFile, err := os.CreateTemp("", "non_rsa_key")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	block := &pem.Block{
+		Type:  "EC PUBLIC KEY",
+		Bytes: []byte("INVALID KEY DATA"),
+	}
+	err = pem.Encode(tempFile, block)
+	assert.NoError(t, err)
+
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию
+	output := encryptMessage(*input, tempFile.Name())
+
+	// Проверяем, что выходной буфер идентичен входному
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_ParseKeyError(t *testing.T) {
+	// Создаем временный файл с некорректным ключом
+	tempFile, err := os.CreateTemp("", "invalid_key")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	block := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: []byte("INVALID KEY DATA"),
+	}
+	err = pem.Encode(tempFile, block)
+	assert.NoError(t, err)
+
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию
+	output := encryptMessage(*input, tempFile.Name())
+
+	// Проверяем, что выходной буфер идентичен входному
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_EncryptTooLong(t *testing.T) {
+	// Создаем RSA ключи
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+	publicKey := &privateKey.PublicKey
+
+	// Создаем PEM-блок для публичного ключа
+	pubKeyBytes := x509.MarshalPKCS1PublicKey(publicKey)
+	block := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: pubKeyBytes,
+	}
+
+	// Создаем временный файл для публичного ключа
+	tempFile, err := os.CreateTemp("", "public_key")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	err = pem.Encode(tempFile, block)
+	assert.NoError(t, err)
+
+	// Генерируем слишком длинное сообщение
+	tooLongMessage := make([]byte, 300) // Длина превышает лимит для 2048-битного ключа
+	for i := range tooLongMessage {
+		tooLongMessage[i] = byte('a')
+	}
+	input := bytes.NewBuffer(tooLongMessage)
+
+	// Вызываем функцию
+	output := encryptMessage(*input, tempFile.Name())
+
+	// Проверяем, что выходной буфер идентичен входному (шифрование не произошло)
+	assert.Equal(t, input.Bytes(), output.Bytes())
+}
+
+func TestEncryptMessage_EncryptionSuccess(t *testing.T) {
+	// Создаем RSA ключи
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+	publicKey := &privateKey.PublicKey
+
+	// Создаем PEM-блок для публичного ключа
+	pubKeyBytes := x509.MarshalPKCS1PublicKey(publicKey)
+	block := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: pubKeyBytes,
+	}
+
+	// Создаем временный файл для публичного ключа
+	tempFile, err := os.CreateTemp("", "public_key")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	err = pem.Encode(tempFile, block)
+	assert.NoError(t, err)
+
+	// Входной буфер
+	input := bytes.NewBufferString("test message")
+
+	// Вызываем функцию
+	output := encryptMessage(*input, tempFile.Name())
+
+	// Проверяем, что выходной буфер отличается от входного (шифрование произошло)
+	assert.NotEqual(t, input.Bytes(), output.Bytes())
+
+	// Дешифруем сообщение для проверки
+	decryptedMessage, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey, output.Bytes())
+	assert.NoError(t, err)
+	assert.Equal(t, input.Bytes(), decryptedMessage)
 }

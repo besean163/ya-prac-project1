@@ -2,8 +2,13 @@
 package services
 
 import (
+	"context"
 	"fmt"
+	"ya-prac-project1/internal/logger"
 	"ya-prac-project1/internal/metrics"
+	pb "ya-prac-project1/internal/services/proto"
+
+	"go.uber.org/zap"
 )
 
 // SaveStorage структура представляющая интерфейс репозитория для работы с сервисом MetricSaverService
@@ -131,4 +136,33 @@ func (s *MetricSaverService) getMetricsKeyMap() map[string]metrics.Metrics {
 		m[metric.GetKey()] = metric
 	}
 	return m
+}
+
+func (s *MetricSaverService) UpdateMetrics(ctx context.Context, in *pb.SaveMetricsRequest) (*pb.SaveMetricsResponse, error) {
+	var response pb.SaveMetricsResponse
+
+	storeMetrics := make([]metrics.Metrics, 0)
+	for _, m := range in.Metrics {
+		sm := metrics.Metrics{
+			MType: m.Type,
+			ID:    m.Id,
+		}
+		if m.Value != nil {
+			sm.Value = m.Value
+		}
+		if m.Delta != nil {
+			sm.Delta = m.Delta
+		}
+		storeMetrics = append(storeMetrics, sm)
+	}
+
+	err := s.SaveMetrics(storeMetrics)
+	if err != nil {
+		logger.Get().Info("server grpc error", zap.String("error", err.Error()))
+		response.Error = err.Error()
+	} else {
+		logger.Get().Info("grpc success")
+	}
+
+	return &response, err
 }
